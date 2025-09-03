@@ -1,9 +1,20 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
-use anchor_spl::associated_token::AssociatedToken;
+// use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+// use anchor_spl::token_2022::{Token2022};
+
+// use anchor_spl::token_2022::{Transfer, MintTo, Burn, ID as Token2022ID};
+// use anchor_spl::token_interface::{Mint, TokenAccount};
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token_interface::{Mint, TokenAccount, TokenInterface, Transfer, transfer_checked,TransferChecked},
+};
+
+use anchor_spl::token_2022::{Token2022};
+
 use solana_program::declare_id;
 pub mod constants;
 use constants::*;
+
 
 
 declare_id!("B2iJWvv6hwMvVkdKm1ovTzSr52neJU9k8AQyQHVBtFRM");
@@ -65,14 +76,15 @@ pub mod vault {
         };
         
         // Transfer tokens from user to vault
-        let cpi_accounts = Transfer {
+        let cpi_accounts = TransferChecked {
             from: ctx.accounts.user_token_account.to_account_info(),
+            mint: ctx.accounts.vault_mint.to_account_info(),
             to: ctx.accounts.token_account.to_account_info(),
             authority: ctx.accounts.user.to_account_info(),
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        token::transfer(cpi_ctx, amount)?;
+        transfer_checked(cpi_ctx, amount, ctx.accounts.vault_mint.decimals)?;
         
         // Update NFT-based user info (uses NFT mint as identifier)
         let nft_user_info = &mut ctx.accounts.nft_user_info;
@@ -142,15 +154,16 @@ pub mod vault {
         ];
         let signer = &[&seeds[..]];
         
-        let cpi_accounts = Transfer {
+        let cpi_accounts = TransferChecked {
             from: ctx.accounts.token_account.to_account_info(),
+            mint: ctx.accounts.vault_mint.to_account_info(),
             to: ctx.accounts.user_token_account.to_account_info(),
             authority: vault.to_account_info(),
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
-        token::transfer(cpi_ctx, assets_to_withdraw)?;
-        
+        transfer_checked(cpi_ctx, assets_to_withdraw, ctx.accounts.vault_mint.decimals)?;
+
         emit!(NFTWithdrawEvent {
             user: ctx.accounts.user.key(),
             nft_mint: ctx.accounts.nft_mint.key(),
@@ -287,15 +300,16 @@ pub mod vault {
         ];
         let signer = &[&seeds[..]];
         
-        let cpi_accounts = Transfer {
+        let cpi_accounts = TransferChecked {
             from: ctx.accounts.token_account.to_account_info(),
+            mint: ctx.accounts.vault_mint.to_account_info(),
             to: ctx.accounts.user_token_account.to_account_info(),
             authority: vault.to_account_info(),
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
-        token::transfer(cpi_ctx, amount)?;
-        
+        transfer_checked(cpi_ctx, amount, ctx.accounts.vault_mint.decimals)?;
+        // ctx.accounts.vault_mint.decimals
         emit!(NFTBorrowEvent {
             user: ctx.accounts.user.key(),
             nft_mint: ctx.accounts.nft_mint.key(),
@@ -322,14 +336,15 @@ pub mod vault {
         };
         
         // Transfer tokens from user to vault
-        let cpi_accounts = Transfer {
+        let cpi_accounts = TransferChecked{
             from: ctx.accounts.user_token_account.to_account_info(),
+            mint: ctx.accounts.vault_mint.to_account_info(),
             to: ctx.accounts.token_account.to_account_info(),
             authority: ctx.accounts.user.to_account_info(),
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        token::transfer(cpi_ctx, amount)?;
+        transfer_checked(cpi_ctx, amount, ctx.accounts.vault_mint.decimals)?;
         
         // Update user shares
         let user_info = &mut ctx.accounts.user_info;
@@ -378,14 +393,15 @@ pub mod vault {
     
         let signer = &[&seeds[..]];
         
-        let cpi_accounts = Transfer {
+        let cpi_accounts = TransferChecked {
             from: ctx.accounts.token_account.to_account_info(),
+            mint: ctx.accounts.vault_mint.to_account_info(),
             to: ctx.accounts.user_token_account.to_account_info(),
             authority: vault.to_account_info(),
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
-        token::transfer(cpi_ctx, assets_to_withdraw)?;
+        transfer_checked(cpi_ctx, assets_to_withdraw, ctx.accounts.vault_mint.decimals)?;
         
         emit!(WithdrawEvent {
             user: ctx.accounts.user.key(),
@@ -429,14 +445,15 @@ pub mod vault {
         ];
         let signer = &[&seeds[..]];
         
-        let cpi_accounts = Transfer {
+        let cpi_accounts = TransferChecked {
             from: ctx.accounts.token_account.to_account_info(),
+            mint: ctx.accounts.vault_mint.to_account_info(),
             to: ctx.accounts.user_token_account.to_account_info(),
             authority: vault.to_account_info(),
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
-        token::transfer(cpi_ctx, amount)?;
+        transfer_checked(cpi_ctx, amount, ctx.accounts.vault_mint.decimals)?;
         
         emit!(BorrowEvent {
             user: ctx.accounts.user.key(),
@@ -469,14 +486,15 @@ pub mod vault {
         update_borrow_rate(vault, ctx.accounts.token_account.amount)?;
         
         // Transfer tokens from user to vault
-        let cpi_accounts = Transfer {
+        let cpi_accounts = TransferChecked{
             from: ctx.accounts.user_token_account.to_account_info(),
+            mint: ctx.accounts.vault_mint.to_account_info(),
             to: ctx.accounts.token_account.to_account_info(),
             authority: ctx.accounts.user.to_account_info(),
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        token::transfer(cpi_ctx, repay_amount)?;
+        transfer_checked(cpi_ctx, repay_amount, ctx.accounts.vault_mint.decimals)?;
         
         emit!(RepayEvent {
             user: ctx.accounts.user.key(),
@@ -514,14 +532,15 @@ pub mod vault {
         ];
         let signer = &[&seeds[..]];
         
-        let cpi_accounts = Transfer {
+        let cpi_accounts = TransferChecked {
             from: ctx.accounts.token_account.to_account_info(),
+            mint: ctx.accounts.vault_mint.to_account_info(),
             to: ctx.accounts.authority_token_account.to_account_info(),
             authority: vault.to_account_info(),
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
-        token::transfer(cpi_ctx, amount)?;
+        transfer_checked(cpi_ctx, amount, ctx.accounts.vault_mint.decimals)?;
         
         emit!(ReservesWithdrawn { amount });
         
@@ -698,7 +717,7 @@ pub struct InitializeVault<'info> {
     )]
     pub vault: Account<'info, Vault>,
     
-    pub mint: Account<'info, Mint>,
+    pub mint: InterfaceAccount<'info, Mint>,
     
     #[account(
         init,
@@ -706,12 +725,12 @@ pub struct InitializeVault<'info> {
         associated_token::mint = mint,
         associated_token::authority = vault,
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: InterfaceAccount<'info, TokenAccount>,
     
     /// CHECK: Pool address for access control
     pub pool: UncheckedAccount<'info>,
     
-    pub token_program: Program<'info, Token>,
+    pub token_program: Program<'info, Token2022>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
@@ -729,14 +748,16 @@ pub struct DepositWithNFT<'info> {
     pub vault: Account<'info, Vault>,
     
     // NFT accounts
-    pub nft_mint: Account<'info, Mint>,
+    pub nft_mint: InterfaceAccount<'info, Mint>,
+
+
     
     #[account(
         constraint = nft_token_account.mint == nft_mint.key(),
         constraint = nft_token_account.amount == 1,
         constraint = nft_token_account.owner == user.key()
     )]
-    pub nft_token_account: Account<'info, TokenAccount>,
+    pub nft_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
         init_if_needed,
@@ -752,15 +773,18 @@ pub struct DepositWithNFT<'info> {
         associated_token::mint = vault.mint,
         associated_token::authority = user,
     )]
-    pub user_token_account: Account<'info, TokenAccount>,
+    pub user_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
         mut,
         address = vault.token_account
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(address = vault.mint)]
+    pub vault_mint: InterfaceAccount<'info, Mint>,
     
-    pub token_program: Program<'info, Token>,
+    pub token_program: Program<'info, Token2022>,
     pub system_program: Program<'info, System>,
 }
 
@@ -777,14 +801,17 @@ pub struct WithdrawWithNFT<'info> {
     pub vault: Account<'info, Vault>,
     
     // NFT accounts
-    pub nft_mint: Account<'info, Mint>,
+    pub nft_mint: InterfaceAccount<'info, Mint>,
+
+    #[account(address = vault.mint)]
+    pub vault_mint: InterfaceAccount<'info, Mint>,
     
     #[account(
         constraint = nft_token_account.mint == nft_mint.key(),
         constraint = nft_token_account.amount == 1,
         constraint = nft_token_account.owner == user.key()
     )]
-    pub nft_token_account: Account<'info, TokenAccount>,
+    pub nft_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
         mut,
@@ -798,15 +825,15 @@ pub struct WithdrawWithNFT<'info> {
         associated_token::mint = vault.mint,
         associated_token::authority = user,
     )]
-    pub user_token_account: Account<'info, TokenAccount>,
+    pub user_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
         mut,
         address = vault.token_account
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: InterfaceAccount<'info, TokenAccount>,
     
-    pub token_program: Program<'info, Token>,
+    pub token_program: Program<'info, Token2022>,
 }
 
 #[derive(Accounts)]
@@ -817,13 +844,13 @@ pub struct TransferPositionToNFT<'info> {
     pub vault: Account<'info, Vault>,
     
     // Source NFT
-    pub source_nft_mint: Account<'info, Mint>,
+    pub source_nft_mint: InterfaceAccount<'info, Mint>,
     #[account(
         constraint = source_nft_token_account.mint == source_nft_mint.key(),
         constraint = source_nft_token_account.amount == 1,
         constraint = source_nft_token_account.owner == user.key()
     )]
-    pub source_nft_token_account: Account<'info, TokenAccount>,
+    pub source_nft_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
         mut,
@@ -833,12 +860,12 @@ pub struct TransferPositionToNFT<'info> {
     pub source_nft_user_info: Account<'info, NFTUserInfo>,
     
     // Target NFT
-    pub target_nft_mint: Account<'info, Mint>,
+    pub target_nft_mint: InterfaceAccount<'info, Mint>,
     #[account(
         constraint = target_nft_token_account.mint == target_nft_mint.key(),
         constraint = target_nft_token_account.amount == 1
     )]
-    pub target_nft_token_account: Account<'info, TokenAccount>,
+    pub target_nft_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
         init_if_needed,
@@ -855,13 +882,13 @@ pub struct TransferPositionToNFT<'info> {
 #[derive(Accounts)]
 pub struct GetNFTPosition<'info> {
     pub vault: Account<'info, Vault>,
-    pub nft_mint: Account<'info, Mint>,
+    pub nft_mint: InterfaceAccount<'info, Mint>,
     #[account(
         seeds = [b"nft_user_info", vault.key().as_ref(), nft_mint.key().as_ref()],
         bump
     )]
     pub nft_user_info: Account<'info, NFTUserInfo>,
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: InterfaceAccount<'info, TokenAccount>,
 }
 
 #[derive(Accounts)]
@@ -880,14 +907,14 @@ pub struct BorrowWithNFT<'info> {
     pub vault: Account<'info, Vault>,
     
     // NFT accounts
-    pub nft_mint: Account<'info, Mint>,
+    pub nft_mint: InterfaceAccount<'info, Mint>,
     
     #[account(
         constraint = nft_token_account.mint == nft_mint.key(),
         constraint = nft_token_account.amount == 1,
         constraint = nft_token_account.owner == user.key()
     )]
-    pub nft_token_account: Account<'info, TokenAccount>,
+    pub nft_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
         seeds = [b"nft_user_info", vault.key().as_ref(), nft_mint.key().as_ref()],
@@ -909,15 +936,18 @@ pub struct BorrowWithNFT<'info> {
         associated_token::mint = vault.mint,
         associated_token::authority = user,
     )]
-    pub user_token_account: Account<'info, TokenAccount>,
+    pub user_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
         mut,
         address = vault.token_account
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: InterfaceAccount<'info, TokenAccount>,
     
-    pub token_program: Program<'info, Token>,
+        
+    #[account(address = vault.mint)]
+    pub vault_mint: InterfaceAccount<'info, Mint>,
+    pub token_program: Program<'info, Token2022>,
     pub system_program: Program<'info, System>,
 }
 
@@ -948,15 +978,18 @@ pub struct Deposit<'info> {
         associated_token::mint = vault.mint,
         associated_token::authority = user,
     )]
-    pub user_token_account: Account<'info, TokenAccount>,
+    pub user_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
         mut,
         address = vault.token_account
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(address = vault.mint)]
+    pub vault_mint: InterfaceAccount<'info, Mint>,
     
-    pub token_program: Program<'info, Token>,
+    pub token_program: Program<'info, Token2022>,
     pub system_program: Program<'info, System>,
 }
 
@@ -984,15 +1017,18 @@ pub struct Withdraw<'info> {
         associated_token::mint = vault.mint,
         associated_token::authority = user,
     )]
-    pub user_token_account: Account<'info, TokenAccount>,
+    pub user_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
         mut,
         address = vault.token_account
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(address = vault.mint)]
+    pub vault_mint: InterfaceAccount<'info, Mint>,
     
-    pub token_program: Program<'info, Token>,
+    pub token_program: Program<'info, Token2022>,
 }
 
 #[derive(Accounts)]
@@ -1024,15 +1060,18 @@ pub struct Borrow<'info> {
         associated_token::mint = vault.mint,
         associated_token::authority = user,
     )]
-    pub user_token_account: Account<'info, TokenAccount>,
+    pub user_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
         mut,
         address = vault.token_account
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(address = vault.mint)]
+    pub vault_mint: InterfaceAccount<'info, Mint>,
     
-    pub token_program: Program<'info, Token>,
+    pub token_program: Program<'info, Token2022>,
     pub system_program: Program<'info, System>,
 }
 
@@ -1063,15 +1102,18 @@ pub struct Repay<'info> {
         associated_token::mint = vault.mint,
         associated_token::authority = user,
     )]
-    pub user_token_account: Account<'info, TokenAccount>,
+    pub user_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
         mut,
         address = vault.token_account
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(address = vault.mint)]
+    pub vault_mint: InterfaceAccount<'info, Mint>,
     
-    pub token_program: Program<'info, Token>,
+    pub token_program: Program<'info, Token2022>,
 }
 
 #[derive(Accounts)]
@@ -1104,15 +1146,18 @@ pub struct WithdrawReserves<'info> {
         associated_token::mint = vault.mint,
         associated_token::authority = authority,
     )]
-    pub authority_token_account: Account<'info, TokenAccount>,
+    pub authority_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
         mut,
         address = vault.token_account
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub token_account: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(address = vault.mint)]
+    pub vault_mint: InterfaceAccount<'info, Mint>,
     
-    pub token_program: Program<'info, Token>,
+    pub token_program: Program<'info, Token2022>,
 }
 
 #[derive(Accounts)]
