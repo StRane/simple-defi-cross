@@ -769,9 +769,11 @@ pub struct DepositWithNFT<'info> {
     pub nft_user_info: Account<'info, NFTUserInfo>,
     
     #[account(
-        mut,
-        associated_token::mint = vault.mint,
+        init_if_needed,
+        payer = user,
+        associated_token::mint = vault,
         associated_token::authority = user,
+        associated_token::token_program = token_program,
     )]
     pub user_token_account: InterfaceAccount<'info, TokenAccount>,
     
@@ -783,6 +785,7 @@ pub struct DepositWithNFT<'info> {
 
     #[account(address = vault.mint)]
     pub vault_mint: InterfaceAccount<'info, Mint>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     
     pub token_program: Program<'info, Token2022>,
     pub system_program: Program<'info, System>,

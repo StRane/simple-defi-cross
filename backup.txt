@@ -1,0 +1,738 @@
+use anchor_lang::prelude::*;
+use solana_program::declare_id;
+
+use anchor_spl::{
+    token::{transfer, Token},
+    token_interface::{Mint, TokenAccount, TokenInterface, Transfer},
+    associated_token::AssociatedToken,
+};
+
+pub mod constants;
+use constants::*;
+
+declare_id!("1nxuiUeMbubshUX8PmrQ72hhV4xGsVM6ZFkRqfPM2n3");
+
+#[program]
+pub mod simple_vault {
+    use super::*;
+
+    pub fn initialize_vault(ctx: Context<InitializeVault>, reserve_factor: u64) -> Result<()> {
+        require!(
+            reserve_factor <= constants::MAX_RESERVE_FACTOR,
+            ErrorCode::ReserveFactorTooHigh
+        );
+
+        let vault = &mut ctx.accounts.vault;
+        let clock = Clock::get()?;
+
+        vault.authority = ctx.accounts.authority.key();
+        vault.mint = ctx.accounts.mint.key();
+        vault.token_account = ctx.accounts.token_account.key();
+        vault.total_borrowed = 0;
+        vault.borrow_index = constants::INITIAL_BORROW_INDEX;
+        vault.borrow_rate = BASE_RATE;
+        vault.last_update_time = clock.unix_timestamp;
+        vault.reserve_factor = reserve_factor;
+        vault.total_reserves = 0;
+        vault.total_shares = 0;
+        vault.is_paused = false;
+        vault.bump = ctx.bumps.vault;
+
+        Ok(())
+    }
+
+    pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
+        require!(!ctx.accounts.vault.is_paused, ErrorCode::VaultPaused);
+        require!(amount > 0, ErrorCode::InvalidAmount);
+
+        update_interest(&mut ctx.accounts.vault)?;
+
+        let vault = &mut ctx.accounts.vault;
+        let total_assets = get_total_assets(ctx.accounts.token_account.amount, vault)?;
+
+        // Calculate shares to mint (ERC4626 logic)
+        let shares_to_mint = if vault.total_shares == 0 {
+            amount
+        } else {
+            (amount * vault.total_shares) / total_assets
+        };
+
+        // Transfer tokens from user to vault
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.user_token_account.to_account_info(),
+            // mint: ctx.accounts.vault_mint.to_account_info(),
+            to: ctx.accounts.token_account.to_account_info(),
+            authority: ctx.accounts.user.to_account_info(),
+        };
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        transfer(cpi_ctx, amount)?;
+
+        // Update user shares
+        let user_info = &mut ctx.accounts.user_info;
+        user_info.shares += shares_to_mint;
+        vault.total_shares += shares_to_mint;
+
+        emit!(DepositEvent {
+            user: ctx.accounts.user.key(),
+            amount,
+            shares: shares_to_mint,
+        });
+
+        Ok(())
+    }
+
+    pub fn withdraw(ctx: Context<Withdraw>, shares: u64) -> Result<()> {
+        require!(!ctx.accounts.vault.is_paused, ErrorCode::VaultPaused);
+        require!(shares > 0, ErrorCode::InvalidAmount);
+
+        update_interest(&mut ctx.accounts.vault)?;
+
+        let vault = &mut ctx.accounts.vault;
+        let user_info = &mut ctx.accounts.user_info;
+
+        require!(user_info.shares >= shares, ErrorCode::InsufficientShares);
+
+        let total_assets = get_total_assets(ctx.accounts.token_account.amount, vault)?;
+        let assets_to_withdraw = (shares * total_assets) / vault.total_shares;
+
+        let available_liquidity = ctx.accounts.token_account.amount - vault.total_reserves;
+        require!(
+            available_liquidity >= assets_to_withdraw,
+            ErrorCode::InsufficientLiquidity
+        );
+
+        // Update user shares
+        user_info.shares -= shares;
+        vault.total_shares -= shares;
+
+        // Transfer tokens from vault to user
+        let seeds = &[b"vault", vault.mint.as_ref(), &[vault.bump]];
+
+        let signer = &[&seeds[..]];
+
+        let cpi_accounts = TransferChecked {
+            from: ctx.accounts.token_account.to_account_info(),
+            mint: ctx.accounts.vault_mint.to_account_info(),
+            to: ctx.accounts.user_token_account.to_account_info(),
+            authority: vault.to_account_info(),
+        };
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+        transfer_checked(
+            cpi_ctx,
+            assets_to_withdraw,
+            ctx.accounts.vault_mint.decimals,
+        )?;
+
+        emit!(WithdrawEvent {
+            user: ctx.accounts.user.key(),
+            shares,
+            amount: assets_to_withdraw,
+        });
+
+        Ok(())
+    }
+
+    pub fn borrow(ctx: Context<Borrow>, amount: u64) -> Result<()> {
+        require!(!ctx.accounts.vault.is_paused, ErrorCode::VaultPaused);
+        require!(amount > 0, ErrorCode::InvalidAmount);
+        require!(
+            ctx.accounts.pool.key() == ctx.accounts.vault.pool,
+            ErrorCode::UnauthorizedPool
+        );
+
+        let vault = &mut ctx.accounts.vault;
+        let available_liquidity = ctx.accounts.token_account.amount - vault.total_reserves;
+        require!(
+            available_liquidity >= amount,
+            ErrorCode::InsufficientLiquidity
+        );
+
+        update_interest(vault)?;
+
+        let user_borrow = &mut ctx.accounts.user_borrow;
+
+        // If user has existing borrow, calculate current debt first
+        if user_borrow.borrowed > 0 {
+            let current_debt =
+                (user_borrow.borrowed * vault.borrow_index) / user_borrow.borrow_index;
+            user_borrow.borrowed = current_debt;
+        }
+
+        user_borrow.borrowed += amount;
+        user_borrow.borrow_index = vault.borrow_index;
+        vault.total_borrowed += amount;
+
+        update_borrow_rate(vault, ctx.accounts.token_account.amount)?;
+
+        // Transfer tokens from vault to user
+        let seeds = &[b"vault", vault.mint.as_ref(), &[vault.bump]];
+        let signer = &[&seeds[..]];
+
+        let cpi_accounts = TransferChecked {
+            from: ctx.accounts.token_account.to_account_info(),
+            mint: ctx.accounts.vault_mint.to_account_info(),
+            to: ctx.accounts.user_token_account.to_account_info(),
+            authority: vault.to_account_info(),
+        };
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+        transfer_checked(cpi_ctx, amount, ctx.accounts.vault_mint.decimals)?;
+
+        emit!(BorrowEvent {
+            user: ctx.accounts.user.key(),
+            amount,
+        });
+
+        Ok(())
+    }
+
+    pub fn repay(ctx: Context<Repay>, amount: u64) -> Result<()> {
+        require!(!ctx.accounts.vault.is_paused, ErrorCode::VaultPaused);
+        require!(amount > 0, ErrorCode::InvalidAmount);
+        require!(
+            ctx.accounts.pool.key() == ctx.accounts.vault.pool,
+            ErrorCode::UnauthorizedPool
+        );
+
+        let vault = &mut ctx.accounts.vault;
+        update_interest(vault)?;
+
+        let user_borrow = &mut ctx.accounts.user_borrow;
+        require!(user_borrow.borrowed > 0, ErrorCode::NoDebtToRepay);
+
+        // Calculate current debt with interest
+        let current_debt = (user_borrow.borrowed * vault.borrow_index) / user_borrow.borrow_index;
+        let repay_amount = amount.min(current_debt);
+
+        // Update user's borrow info
+        user_borrow.borrowed = current_debt - repay_amount;
+        user_borrow.borrow_index = vault.borrow_index;
+        vault.total_borrowed -= repay_amount;
+
+        update_borrow_rate(vault, ctx.accounts.token_account.amount)?;
+
+        // Transfer tokens from user to vault
+        let cpi_accounts = TransferChecked {
+            from: ctx.accounts.user_token_account.to_account_info(),
+            mint: ctx.accounts.vault_mint.to_account_info(),
+            to: ctx.accounts.token_account.to_account_info(),
+            authority: ctx.accounts.user.to_account_info(),
+        };
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        transfer_checked(cpi_ctx, repay_amount, ctx.accounts.vault_mint.decimals)?;
+
+        emit!(RepayEvent {
+            user: ctx.accounts.user.key(),
+            amount: repay_amount,
+        });
+
+        Ok(())
+    }
+
+    pub fn set_reserve_factor(
+        ctx: Context<SetReserveFactor>,
+        new_reserve_factor: u64,
+    ) -> Result<()> {
+        require!(
+            new_reserve_factor <= MAX_RESERVE_FACTOR,
+            ErrorCode::ReserveFactorTooHigh
+        );
+
+        let vault = &mut ctx.accounts.vault;
+        update_interest(vault)?;
+        vault.reserve_factor = new_reserve_factor;
+
+        emit!(ReserveFactorUpdated { new_reserve_factor });
+
+        Ok(())
+    }
+
+    pub fn withdraw_reserves(ctx: Context<WithdrawReserves>, amount: u64) -> Result<()> {
+        let vault = &mut ctx.accounts.vault;
+        require!(
+            amount <= vault.total_reserves,
+            ErrorCode::InsufficientReserves
+        );
+
+        vault.total_reserves -= amount;
+
+        // Transfer reserves to authority
+        let seeds = &[b"vault", vault.mint.as_ref(), &[vault.bump]];
+        let signer = &[&seeds[..]];
+
+        let cpi_accounts = TransferChecked {
+            from: ctx.accounts.token_account.to_account_info(),
+            mint: ctx.accounts.vault_mint.to_account_info(),
+            to: ctx.accounts.authority_token_account.to_account_info(),
+            authority: vault.to_account_info(),
+        };
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+        transfer_checked(cpi_ctx, amount, ctx.accounts.vault_mint.decimals)?;
+
+        emit!(ReservesWithdrawn { amount });
+
+        Ok(())
+    }
+
+    pub fn pause_vault(ctx: Context<PauseVault>) -> Result<()> {
+        ctx.accounts.vault.is_paused = true;
+        Ok(())
+    }
+
+    pub fn unpause_vault(ctx: Context<UnpauseVault>) -> Result<()> {
+        ctx.accounts.vault.is_paused = false;
+        Ok(())
+    }
+}
+
+// Helper functions
+fn update_interest(vault: &mut Vault) -> Result<()> {
+    let clock = Clock::get()?;
+    let current_time = clock.unix_timestamp;
+
+    if current_time == vault.last_update_time {
+        return Ok(());
+    }
+
+    let new_index = calculate_current_borrow_index(vault, current_time)?;
+    let mut total_interest = 0;
+
+    if vault.total_borrowed > 0 {
+        let new_total_borrowed = (vault.total_borrowed * new_index) / vault.borrow_index;
+        total_interest = new_total_borrowed - vault.total_borrowed;
+
+        // Calculate reserves
+        let reserve_amount = (total_interest * vault.reserve_factor) / constants::PRECISION;
+        vault.total_reserves += reserve_amount;
+
+        vault.total_borrowed = new_total_borrowed;
+    }
+
+    vault.borrow_index = new_index;
+    vault.last_update_time = current_time;
+
+    if total_interest > 0 {
+        emit!(InterestAccrued {
+            total_interest,
+            new_index,
+        });
+    }
+
+    Ok(())
+}
+
+fn calculate_current_borrow_index(vault: &Vault, current_time: i64) -> Result<u64> {
+    if vault.total_borrowed == 0 {
+        return Ok(vault.borrow_index);
+    }
+
+    let time_elapsed = (current_time - vault.last_update_time) as u64;
+    let interest_factor = (vault.borrow_rate * time_elapsed) / SECONDS_PER_YEAR;
+    Ok(vault.borrow_index + (vault.borrow_index * interest_factor) / PRECISION)
+}
+
+fn update_borrow_rate(vault: &mut Vault, token_balance: u64) -> Result<()> {
+    let total_assets = get_total_assets(token_balance, vault)? + vault.total_reserves;
+
+    if total_assets == 0 {
+        vault.borrow_rate = BASE_RATE;
+        return Ok(());
+    }
+
+    let utilization_rate = (vault.total_borrowed * PRECISION) / total_assets;
+
+    if utilization_rate <= KINK {
+        vault.borrow_rate = BASE_RATE + (utilization_rate * UTILIZATION_MULTIPLIER) / PRECISION;
+    } else {
+        let normal_rate = BASE_RATE + (KINK * UTILIZATION_MULTIPLIER) / PRECISION;
+        let excess_utilization = utilization_rate - KINK;
+        vault.borrow_rate = normal_rate + (excess_utilization * JUMP_MULTIPLIER) / PRECISION;
+    }
+
+    Ok(())
+}
+
+fn get_total_assets(token_balance: u64, vault: &Vault) -> Result<u64> {
+    let current_total_borrowed = if vault.total_borrowed == 0 {
+        0
+    } else {
+        let clock = Clock::get()?;
+        let current_index = calculate_current_borrow_index(vault, clock.unix_timestamp)?;
+        (vault.total_borrowed * current_index) / vault.borrow_index
+    };
+
+    Ok(token_balance + current_total_borrowed - vault.total_reserves)
+}
+
+// Account structures
+#[account]
+pub struct Vault {
+    pub authority: Pubkey,
+    pub mint: Pubkey,
+    pub token_account: Pubkey,
+    pub pool: Pubkey,
+    pub total_borrowed: u64,
+    pub borrow_index: u64,
+    pub borrow_rate: u64,
+    pub last_update_time: i64,
+    pub reserve_factor: u64,
+    pub total_reserves: u64,
+    pub total_shares: u64,
+    pub is_paused: bool,
+    pub bump: u8,
+}
+
+#[account]
+pub struct UserInfo {
+    pub vault: Pubkey,
+    pub user: Pubkey,
+    pub shares: u64,
+}
+
+#[account]
+pub struct BorrowInfo {
+    pub vault: Pubkey,
+    pub user: Pubkey,
+    pub borrowed: u64,
+    pub borrow_index: u64,
+}
+
+
+
+// Context structures
+#[derive(Accounts)]
+pub struct InitializeVault<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub mint: Account<'info, Mint>,
+    
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + std::mem::size_of::<Vault>(),
+        seeds = [b"vault", mint.key().as_ref()],
+        bump
+    )]
+    pub vault: Account<'info, Vault>,
+
+
+    #[account(
+        init,
+        payer = authority,
+        associated_token::mint = mint,
+        associated_token::authority = vault,
+    )]
+    pub vault_token_account: Account<'info, TokenAccount>,
+
+
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
+
+
+#[derive(Accounts)]
+pub struct Deposit<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"vault", vault.mint.as_ref()],
+        bump = vault.bump
+    )]
+    pub vault: Account<'info, Vault>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = 8 + std::mem::size_of::<UserInfo>(),
+        seeds = [b"user_info", vault.key().as_ref(), user.key().as_ref()],
+        bump
+    )]
+    pub user_info: Account<'info, UserInfo>,
+
+    #[account(
+        mut,
+        associated_token::mint = vault.mint,
+        associated_token::authority = user,
+    )]
+    pub user_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        address = vault.token_account
+    )]
+    pub token_account: Account<'info, TokenAccount>,
+
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Withdraw<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"vault", vault.mint.as_ref()],
+        bump = vault.bump
+    )]
+    pub vault: Account<'info, Vault>,
+
+    #[account(
+        mut,
+        seeds = [b"user_info", vault.key().as_ref(), user.key().as_ref()],
+        bump
+    )]
+    pub user_info: Account<'info, UserInfo>,
+
+    #[account(
+        mut,
+        associated_token::mint = vault.mint,
+        associated_token::authority = user,
+    )]
+    pub user_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        address = vault.token_account
+    )]
+    pub token_account: Account<'info, TokenAccount>,
+
+    #[account(address = vault.mint)]
+    pub vault_mint: Account<'info, Mint>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct Borrow<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    /// CHECK: Pool signer for access control
+    pub pool: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"vault", vault.mint.as_ref()],
+        bump = vault.bump
+    )]
+    pub vault: Account<'info, Vault>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = 8 + std::mem::size_of::<BorrowInfo>(),
+        seeds = [b"borrow_info", vault.key().as_ref(), user.key().as_ref()],
+        bump
+    )]
+    pub user_borrow: Account<'info, BorrowInfo>,
+
+    #[account(
+        mut,
+        associated_token::mint = vault.mint,
+        associated_token::authority = user,
+    )]
+    pub user_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        address = vault.token_account
+    )]
+    pub token_account: Account<'info, TokenAccount>,
+
+    #[account(address = vault.mint)]
+    pub vault_mint: Account<'info, Mint>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Repay<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    /// CHECK: Pool signer for access control
+    pub pool: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"vault", vault.mint.as_ref()],
+        bump = vault.bump
+    )]
+    pub vault: Account<'info, Vault>,
+
+    #[account(
+        mut,
+        seeds = [b"borrow_info", vault.key().as_ref(), user.key().as_ref()],
+        bump
+    )]
+    pub user_borrow: Account<'info, BorrowInfo>,
+
+    #[account(
+        mut,
+        associated_token::mint = vault.mint,
+        associated_token::authority = user,
+    )]
+    pub user_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        address = vault.token_account
+    )]
+    pub token_account: Account<'info, TokenAccount>,
+
+    #[account(address = vault.mint)]
+    pub vault_mint: Account<'info, Mint>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct SetReserveFactor<'info> {
+    #[account(
+        mut,
+        has_one = authority,
+        seeds = [b"vault", vault.mint.as_ref()],
+        bump = vault.bump
+    )]
+    pub vault: Account<'info, Vault>,
+
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawReserves<'info> {
+    #[account(
+        mut,
+        has_one = authority,
+        seeds = [b"vault", vault.mint.as_ref()],
+        bump = vault.bump
+    )]
+    pub vault: Account<'info, Vault>,
+
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        associated_token::mint = vault.mint,
+        associated_token::authority = authority,
+    )]
+    pub authority_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        address = vault.token_account
+    )]
+    pub token_account: Account<'info, TokenAccount>,
+
+    #[account(address = vault.mint)]
+    pub vault_mint: Account<'info, Mint>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct PauseVault<'info> {
+    #[account(
+        mut,
+        has_one = authority,
+        seeds = [b"vault", vault.mint.as_ref()],
+        bump = vault.bump
+    )]
+    pub vault: Account<'info, Vault>,
+
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct UnpauseVault<'info> {
+    #[account(
+        mut,
+        has_one = authority,
+        seeds = [b"vault", vault.mint.as_ref()],
+        bump = vault.bump
+    )]
+    pub vault: Account<'info, Vault>,
+
+    pub authority: Signer<'info>,
+}
+
+// Events
+#[event]
+pub struct DepositEvent {
+    pub user: Pubkey,
+    pub amount: u64,
+    pub shares: u64,
+}
+
+#[event]
+pub struct WithdrawEvent {
+    pub user: Pubkey,
+    pub shares: u64,
+    pub amount: u64,
+}
+
+#[event]
+pub struct BorrowEvent {
+    pub user: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
+pub struct RepayEvent {
+    pub user: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
+pub struct InterestAccrued {
+    pub total_interest: u64,
+    pub new_index: u64,
+}
+
+#[event]
+pub struct ReserveFactorUpdated {
+    pub new_reserve_factor: u64,
+}
+
+#[event]
+pub struct ReservesWithdrawn {
+    pub amount: u64,
+}
+
+// Error codes
+#[error_code]
+pub enum ErrorCode {
+    #[msg("Vault is paused")]
+    VaultPaused,
+    #[msg("Invalid amount")]
+    InvalidAmount,
+    #[msg("Insufficient liquidity")]
+    InsufficientLiquidity,
+    #[msg("Insufficient shares")]
+    InsufficientShares,
+    #[msg("No debt to repay")]
+    NoDebtToRepay,
+    #[msg("Reserve factor too high")]
+    ReserveFactorTooHigh,
+    #[msg("Insufficient reserves")]
+    InsufficientReserves,
+    #[msg("Unauthorized pool")]
+    UnauthorizedPool,
+    #[msg("Invalid NFT ownership")]
+    InvalidNFTOwnership,
+    #[msg("Invalid NFT user info")]
+    InvalidNFTUserInfo,
+    #[msg("Insufficient collateral")]
+    InsufficientCollateral,
+}

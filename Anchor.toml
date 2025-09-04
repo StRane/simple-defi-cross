@@ -5,10 +5,12 @@ skip-lint = false
 [programs.localnet]
 unique_id = "u7X6Ut4Mm9wqQ8ci2XiUjtcyqRJnHScStUo81Deh6bA"
 vault="B2iJWvv6hwMvVkdKm1ovTzSr52neJU9k8AQyQHVBtFRM"
+simple_vault="HbU51p3yZxTwLRrJTbDez1vhq4Q95RFFeYDFZPT1916h"
 
 [programs.testnet]
 unique_id_nft = "u7X6Ut4Mm9wqQ8ci2XiUjtcyqRJnHScStUo81Deh6bA"
 vault = "B2iJWvv6hwMvVkdKm1ovTzSr52neJU9k8AQyQHVBtFRM"
+simple_vault="HbU51p3yZxTwLRrJTbDez1vhq4Q95RFFeYDFZPT1916h"
 
 [registry]
 url = "https://api.apr.dev"
