@@ -1574,6 +1574,7 @@ dependencies = [
  "anchor-lang-idl",
  "anchor-spl",
  "solana-program",
+ "unique-low",
  "wormhole-io",
  "wormhole-supported-chains",
  "wormhole-vaas",
@@ -2986,6 +2987,19 @@ checksum = "f6ccf251212114b54433ec949fd6a7841275f9ada20dddd2f29e9ceea4501493"
 
 [[package]]
 name = "unique-id"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-lang-idl",
+ "anchor-spl",
+ "solana-program",
+ "wormhole-io",
+ "wormhole-supported-chains",
+ "wormhole-vaas",
+]
+
+[[package]]
+name = "unique-low"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",

@@ -1,12 +1,12 @@
 [package]
-name = "simple_vault"
+name = "unique-low"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "simple_vault"
+name = "unique_low"
 
 [features]
 default = []
@@ -24,5 +24,4 @@ wormhole-io = { workspace = true }
 wormhole-supported-chains = { workspace = true }
 solana-program = { workspace = true }
 anchor-lang-idl = { workspace = true }
-unique-low = { path = "../unique-low", features = ["cpi"] }
 
