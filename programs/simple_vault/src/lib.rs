@@ -48,17 +48,17 @@ pub mod simple_vault {
         };
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
         token::transfer(cpi_ctx, amount)?;
-        let total_assets = get_total_assets(ctx.accounts.user_asset_token.amount,  &vault)?;
+        let total_assets = get_total_assets(ctx.accounts.user_asset_token.amount, &vault)?;
 
-        let shares_to_mint = if  vault.total_shares == 0 {
+        let shares_to_mint = if vault.total_shares == 0 {
             amount
         } else {
-            (amount *  vault.total_shares) / total_assets
+            (amount * vault.total_shares) / total_assets
         };
 
         // Mint shares to user
         let asset_mint_key = ctx.accounts.asset_mint.key();
-        
+
         let seeds: &[&[u8]] = &[
             b"vault".as_ref(),
             asset_mint_key.as_ref(),
@@ -85,13 +85,57 @@ pub mod simple_vault {
         nft_user_info.nft_mint = ctx.accounts.nft_collection.key();
         nft_user_info.owner = ctx.accounts.user_nft_token.key();
         nft_user_info.shares += shares_to_mint;
-        nft_user_info.deposited_amount += amount;
         nft_user_info.last_update = Clock::get()?.unix_timestamp;
-        
+
         ctx.accounts.vault.total_shares += shares_to_mint;
 
         Ok(())
     }
+
+     pub fn withdraw(ctx: Context<Withdraw>, shares: u64) -> Result<()> {
+        
+        require!(shares > 0, ErrorCode::InvalidAmount);
+        
+      
+        
+        update_interest(&mut ctx.accounts.vault)?;
+        
+        
+        
+        let user_info = &mut ctx.accounts.nft_info;
+        
+        require!(user_info.shares >= shares, ErrorCode::InsufficientShares);
+        
+        // let total_assets = get_total_assets(ctx.accounts.token_account.amount, vault)?;
+        let assets_to_withdraw = (shares * ctx.accounts.vault.total_reserves) / ctx.accounts.vault.total_shares;
+        
+        // let available_liquidity = ctx.accounts.user_share_token.amount - vault.total_reserves;
+        require!(ctx.accounts.vault.total_reserves >= assets_to_withdraw, ErrorCode::InsufficientLiquidity);
+
+        let vault = &mut ctx.accounts.vault;
+        
+        // Update user shares
+        user_info.shares -= shares;
+        vault.total_shares -= shares;
+        
+
+        let cpi_accounts = Transfer{
+            from: ctx.accounts.vault_token_account.to_account_info(),
+            to: ctx.accounts.user_asset_token.to_account_info(),
+            authority: vault.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+        token::transfer(cpi_ctx, assets_to_withdraw)?;
+        
+        emit!(WithdrawEvent {
+            user: ctx.accounts.user.key(),
+            shares,
+            amount: assets_to_withdraw,
+        });
+        
+        Ok(())
+    }
+
 }
 
 #[account]
@@ -235,9 +279,9 @@ pub struct UserInfo {
     pub nft_mint: Pubkey, // NFT mint address as unique identifier
     pub owner: Pubkey,    // Current owner of the NFT
     pub shares: u64,
-    pub deposited_amount: u64, // Track original deposit
     pub last_update: i64,
 }
+
 #[derive(Accounts)]
 #[instruction(amount: u64)]
 pub struct Deposit<'info> {
@@ -281,7 +325,76 @@ pub struct Deposit<'info> {
     pub share_mint: Account<'info, Mint>,
 
     #[account(
-    seeds = [b"user_shares", user.key().as_ref(), user_nft_mint.key().as_ref()],
+    seeds = [b"user_shares", user_nft_mint.key().as_ref()],
+    bump
+    )]
+    pub user_share_pda: AccountInfo<'info>,
+
+    #[account(
+    mut,
+    associated_token::mint = share_mint,
+    associated_token::authority = user_share_pda
+)]
+    pub user_share_token: Account<'info, TokenAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = 8 + std::mem::size_of::<UserInfo>(),
+        seeds = [b"vault", user_nft_token.key().as_ref(), user_share_token.key().as_ref()],
+        bump
+    )]
+    pub nft_info: Account<'info, UserInfo>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+}
+
+#[derive(Accounts)]
+#[instruction(amount: u64)]
+pub struct Withdraw<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    #[account(mut)]
+    pub vault: Account<'info, Vault>,
+
+    /// The NFT collection account (PDA from your NFT program)
+    pub nft_collection: Account<'info, Collection>,
+
+    /// ✅ Must own at least 1 NFT where the mint authority is the collection
+    #[account(
+        constraint = user_nft_token.owner == user.key(),
+        constraint = user_nft_token.amount > 0,
+        constraint = user_nft_mint.mint_authority == COption::Some(vault.nft_collection_address), // ← Key check!
+    )]
+    pub user_nft_token: Account<'info, TokenAccount>,
+
+    #[account(
+        constraint = user_nft_token.mint == user_nft_mint.key(),
+    )]
+    pub user_nft_mint: Account<'info, Mint>,
+
+    #[account(mut)]
+    pub asset_mint: Account<'info, Mint>,
+
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = asset_mint,
+        associated_token::authority = user
+    )]
+    pub user_asset_token: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub vault_token_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub share_mint: Account<'info, Mint>,
+
+    #[account(
+    seeds = [b"user_shares", user_nft_mint.key().as_ref()],
     bump
     )]
     pub user_share_pda: AccountInfo<'info>,
@@ -308,44 +421,6 @@ pub struct Deposit<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
-// #[derive(Accounts)]
-// pub struct Withdraw<'info> {
-//     #[account(mut)]
-//     pub user: Signer<'info>,
-
-//     #[account(
-//         mut,
-//         seeds = [b"vault", vault.mint.as_ref()],
-//         bump = vault.bump
-//     )]
-//     pub vault: Account<'info, Vault>,
-
-//     #[account(
-//         mut,
-//         seeds = [b"user_info", vault.key().as_ref(), user.key().as_ref()],
-//         bump
-//     )]
-//     pub user_info: Account<'info, UserInfo>,
-
-//     #[account(
-//         mut,
-//         associated_token::mint = vault.mint,
-//         associated_token::authority = user,
-//     )]
-//     pub user_token_account: InterfaceAccount<'info, TokenAccount>,
-
-//     #[account(
-//         mut,
-//         address = vault.token_account
-//     )]
-//     pub token_account: InterfaceAccount<'info, TokenAccount>,
-
-//     #[account(address = vault.mint)]
-//     pub vault_mint: InterfaceAccount<'info, Mint>,
-
-//     pub token_program: Program<'info, Token2022>,
-// }
-
 #[error_code]
 pub enum ErrorCode {
     #[msg("Invalid deposit amount")]
@@ -353,10 +428,23 @@ pub enum ErrorCode {
 
     #[msg("NFT does not belong to required collection")]
     InvalidNftCollection,
+
+    #[msg("Insufficent shares")]
+    InsufficientShares,
+
+    #[msg("Insufficent reserves")]
+    InsufficientLiquidity,
 }
 
 #[event]
 pub struct InterestAccrued {
     pub total_interest: u64,
     pub new_index: u64,
+}
+
+#[event]
+pub struct WithdrawEvent{
+    pub user: Pubkey,
+    pub shares: u64,
+    pub amount: u64,
 }
