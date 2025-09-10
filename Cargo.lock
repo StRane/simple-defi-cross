@@ -2848,6 +2848,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "test_token"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-lang-idl",
+ "anchor-spl",
+ "solana-program",
+ "wormhole-io",
+ "wormhole-supported-chains",
+ "wormhole-vaas",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"

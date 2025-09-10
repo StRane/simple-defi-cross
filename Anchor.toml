@@ -7,12 +7,14 @@ skip-lint = false
 #spl_4626_vault="987M4VVtt2T3bHBV6cXmeMsZgAxbMs2HUBaaAcpqFeyW"
 simple_vault="6szSVnHy2GrCi6y7aQxJfQG9WpVkTgdB6kDXixepvdoW"
 unique_low="5XdsDEXPiHndfBkrvJKjsFZy3Zf95bUZLRZQvJ4W6Bpa"
+test_token="Eou9Y4Gn7kWuxbxRfQdQkBMs4K6f1f1Dz5H4auspcKnv"
 
 [programs.testnet]
 #unique_id_nft = "u7X6Ut4Mm9wqQ8ci2XiUjtcyqRJnHScStUo81Deh6bA"
 #spl_4626_vault="987M4VVtt2T3bHBV6cXmeMsZgAxbMs2HUBaaAcpqFeyW"
 simple_vault="6szSVnHy2GrCi6y7aQxJfQG9WpVkTgdB6kDXixepvdoW"
 unique_low="5XdsDEXPiHndfBkrvJKjsFZy3Zf95bUZLRZQvJ4W6Bpa"
+test_token="Eou9Y4Gn7kWuxbxRfQdQkBMs4K6f1f1Dz5H4auspcKnv"
 
 [registry]
 url = "https://api.apr.dev"
