@@ -31,7 +31,7 @@ describe("unique_low", () => {
     let collectionPda: PublicKey;
     let collectionBump: number;
     let wormholeProgram: PublicKey;
-
+    
     // INITIALIZE THESE PROPERLY
     let user1Data = {
         firstMint: null as PublicKey | null,
@@ -39,7 +39,7 @@ describe("unique_low", () => {
         secondMint: null as PublicKey | null,
         secondTokenAccount: null as PublicKey | null
     };
-
+    
     let user2Data = {
         firstMint: null as PublicKey | null,
         firstTokenAccount: null as PublicKey | null
