@@ -1,10 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount};
 
-declare_id!("Eou9Y4Gn7kWuxbxRfQdQkBMs4K6f1f1Dz5H4auspcKnv");
+declare_id!("HY3dPfn3MJqLSbQm4jExye2H8KZag8AkD2AmBXgL2SKm");
 
 #[program]
-pub mod open_mint_token {
+pub mod test_token {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
@@ -44,7 +44,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = payer,
-        mint::decimals = 9,
+        mint::decimals = 6,
         mint::authority = mint_auth,
         mint::freeze_authority = mint_auth
     )]
@@ -52,6 +52,9 @@ pub struct Initialize<'info> {
 
     /// PDA that acts as mint authority
     #[account(
+        init,         
+        payer = payer,
+        space = 8 + std::mem::size_of::<MintAuthorityPda>(),
         seeds = [b"mint_auth"],
         bump
     )]
@@ -72,7 +75,8 @@ pub struct MintTokens<'info> {
     pub mint: Account<'info, Mint>,
 
     #[account(
-        mut,
+        init_if_needed,
+        payer = caller,
         associated_token::mint = mint,
         associated_token::authority = caller
     )]

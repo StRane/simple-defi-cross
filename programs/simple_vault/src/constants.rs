@@ -6,3 +6,6 @@ pub const SECONDS_PER_YEAR: u64 = 31_536_000;
 pub const INITIAL_BORROW_INDEX: u64 = 1_000_000_000;
 pub const MAX_RESERVE_FACTOR: u64 = 500_000_000;
 pub const PRECISION: u64 = 1_000_000_000;
+pub const VAULT_SEED: &[u8] = b"vault_v3";
+pub const USER_SHARES_SEED: &[u8] = b"user_shares_v3";
+pub const USER_INFO_SEED: &[u8] = b"user_info_v3";

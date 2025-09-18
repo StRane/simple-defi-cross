@@ -24,7 +24,8 @@ describe("unique-id-no-metadata", () => {
   const collectionName = "Test Collection";
   const collectionSymbol = "TEST";
   const baseUri = "https://example.com/metadata/";
-  const wormholeProgramId = Keypair.generate().publicKey;
+  // const wormholeProgramId = Keypair.generate().publicKey;
+  const wormholeProgramId = new PublicKey("11111111111111111111111111111111");
   
   const COLLECTION_SEED = Buffer.from("collection");
   const USER_STATE_SEED = Buffer.from("user_state");

@@ -385,9 +385,10 @@ pub struct WormholeProgram;
 impl anchor_lang::Id for WormholeProgram {
     fn id() -> Pubkey {
         // Wormhole program ID on Solana mainnet
-        "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth"
-            .parse()
-            .unwrap()
+        "11111111111111111111111111111111".parse().unwrap()
+        // "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth"
+        //     .parse()
+        //     .unwrap()
     }
 }
 

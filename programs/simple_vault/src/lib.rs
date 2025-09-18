@@ -36,11 +36,9 @@ pub mod simple_vault {
     }
 
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
-        // The identity check is enforced by the custom constraint in Deposit accounts
-        update_interest(&mut ctx.accounts.vault)?;
-        let vault = &ctx.accounts.vault;
+        let vault = &mut ctx.accounts.vault;
 
-        // Transfer assets from user to vault
+        // Transfer assets from user to vault first
         let cpi_accounts = Transfer {
             from: ctx.accounts.user_asset_token.to_account_info(),
             to: ctx.accounts.vault_token_account.to_account_info(),
@@ -48,24 +46,44 @@ pub mod simple_vault {
         };
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
         token::transfer(cpi_ctx, amount)?;
-        let total_assets = get_total_assets(ctx.accounts.user_asset_token.amount, &vault)?;
 
+        // Get total assets AFTER the transfer
+        let total_assets = ctx.accounts.vault_token_account.amount;
+
+        // Standard ERC4626 share calculation
         let shares_to_mint = if vault.total_shares == 0 {
+            // First deposit gets 1:1 shares
             amount
         } else {
-            (amount * vault.total_shares) / total_assets
+            // shares = (amount * totalShares) / (totalAssets - amount)
+            // We subtract amount because we already transferred it
+            let pre_deposit_assets = total_assets.saturating_sub(amount);
+
+            if pre_deposit_assets == 0 {
+                amount // Fallback to 1:1 if somehow no assets
+            } else {
+                ((amount as u128) * (vault.total_shares as u128) / (pre_deposit_assets as u128))
+                    as u64
+            }
         };
 
         // Mint shares to user
         let asset_mint_key = ctx.accounts.asset_mint.key();
-
         let seeds: &[&[u8]] = &[
-            b"vault".as_ref(),
+            VAULT_SEED.as_ref(),
             asset_mint_key.as_ref(),
             vault.owner.as_ref(),
             &[vault.bump],
         ];
         let signer = &[&seeds[..]];
+
+        // Update user info
+        let nft_user_info = &mut ctx.accounts.nft_info;
+        nft_user_info.vault = vault.key();
+        nft_user_info.nft_mint = ctx.accounts.user_nft_mint.key();
+        nft_user_info.owner = ctx.accounts.user_nft_token.key();
+        nft_user_info.shares += shares_to_mint;
+        nft_user_info.last_update = Clock::get()?.unix_timestamp;
 
         token::mint_to(
             CpiContext::new_with_signer(
@@ -80,53 +98,43 @@ pub mod simple_vault {
             shares_to_mint,
         )?;
 
-        let nft_user_info = &mut ctx.accounts.nft_info;
-        nft_user_info.vault = vault.key();
-        nft_user_info.nft_mint = ctx.accounts.nft_collection.key();
-        nft_user_info.owner = ctx.accounts.user_nft_token.key();
-        nft_user_info.shares += shares_to_mint;
-        nft_user_info.last_update = Clock::get()?.unix_timestamp;
-
-        ctx.accounts.vault.total_shares += shares_to_mint;
-
+        vault.total_shares += shares_to_mint;
         Ok(())
     }
+
+
 
     pub fn withdraw(ctx: Context<Withdraw>, shares: u64) -> Result<()> {
         require!(shares > 0, ErrorCode::InvalidAmount);
 
-        update_interest(&mut ctx.accounts.vault)?;
-
         let user_info = &mut ctx.accounts.nft_info;
-
         require!(user_info.shares >= shares, ErrorCode::InsufficientShares);
 
-        // let total_assets = get_total_assets(ctx.accounts.token_account.amount, vault)?;
-        let assets_to_withdraw = ((shares as u128) * (ctx.accounts.vault.total_reserves as u128))
-            / (ctx.accounts.vault.total_shares as u128);
+        let vault = &mut ctx.accounts.vault;
+        require!(vault.total_shares > 0, ErrorCode::InsufficientShares);
 
-        let assets_to_withdraw = assets_to_withdraw as u64;
+        // Simple ERC4626: assets = (shares * totalAssets) / totalShares
+        let total_assets = ctx.accounts.vault_token_account.amount;
+        let assets_to_withdraw =
+            ((shares as u128) * (total_assets as u128) / (vault.total_shares as u128)) as u64;
 
-        // let available_liquidity = ctx.accounts.user_share_token.amount - vault.total_reserves;
         require!(
-            ctx.accounts.vault.total_reserves >= assets_to_withdraw,
+            total_assets >= assets_to_withdraw,
             ErrorCode::InsufficientLiquidity
         );
-         let vault = &mut ctx.accounts.vault;
 
-
+        // Burn shares first
         let burn_accounts = Burn {
             mint: ctx.accounts.share_mint.to_account_info(),
             from: ctx.accounts.user_share_token.to_account_info(),
             authority: ctx.accounts.user_share_pda.to_account_info(),
         };
-        let user_nft_mint_key = ctx.accounts.user_nft_mint.key();
 
-        
+        let user_nft_mint_key = ctx.accounts.user_nft_mint.key();
         let seeds: &[&[u8]] = &[
-            b"user_shares".as_ref(),
+            USER_SHARES_SEED.as_ref(),
             user_nft_mint_key.as_ref(),
-            &[ctx.bumps.user_share_pda], // You'll need to add this to your struct
+            &[ctx.bumps.user_share_pda],
         ];
         let signer = &[&seeds[..]];
 
@@ -136,15 +144,15 @@ pub mod simple_vault {
             signer,
         );
         token::burn(burn_ctx, shares)?;
-       
 
-        // Update user shares
+        // Update accounting
         user_info.shares -= shares;
         vault.total_shares -= shares;
 
+        // Transfer assets to user
         let asset_mint_key = ctx.accounts.asset_mint.key();
         let vault_seeds: &[&[u8]] = &[
-            b"vault".as_ref(),
+            VAULT_SEED.as_ref(),
             asset_mint_key.as_ref(),
             vault.owner.as_ref(),
             &[vault.bump],
@@ -160,7 +168,7 @@ pub mod simple_vault {
         let cpi_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             cpi_accounts,
-            vault_signer, // Add the signer here
+            vault_signer,
         );
         token::transfer(cpi_ctx, assets_to_withdraw)?;
 
@@ -170,6 +178,12 @@ pub mod simple_vault {
             amount: assets_to_withdraw,
         });
 
+        Ok(())
+    }
+    
+    
+    pub fn close_vault(ctx: Context<CloseVault>) -> Result<()> {
+        // Vault will be automatically closed and lamports returned to authority
         Ok(())
     }
 }
@@ -192,96 +206,8 @@ pub struct Vault {
     pub bump: u8,
 }
 
-// impl Vault {
-//     pub fn signer_seeds(&self) -> Vec<Vec<u8>> {
-//         vec![
-//             vec![
-//                 b"vault".to_vec(),
-//                 self.asset_mint.to_bytes().to_vec(),
-//                 self.owner.to_bytes().to_vec(),
-//                 vec![self.bump],
-//             ].concat()
-//         ]
-//     }
-// }
-
-// Helper functions
-fn update_interest(vault: &mut Vault) -> Result<()> {
-    let clock = Clock::get()?;
-    let current_time = clock.unix_timestamp;
-
-    if current_time == vault.last_update_time {
-        return Ok(());
-    }
-
-    let new_index = calculate_current_borrow_index(vault, current_time)?;
-    let mut total_interest = 0;
-
-    if vault.total_borrowed > 0 {
-        let new_total_borrowed = (vault.total_borrowed * new_index) / vault.borrow_index;
-        total_interest = new_total_borrowed - vault.total_borrowed;
-
-        // Calculate reserves
-        let reserve_amount = (total_interest * vault.reserve_factor) / constants::PRECISION;
-        vault.total_reserves += reserve_amount;
-
-        vault.total_borrowed = new_total_borrowed;
-    }
-
-    vault.borrow_index = new_index;
-    vault.last_update_time = current_time;
-
-    if total_interest > 0 {
-        emit!(InterestAccrued {
-            total_interest,
-            new_index,
-        });
-    }
-
-    Ok(())
-}
-
-fn calculate_current_borrow_index(vault: &Vault, current_time: i64) -> Result<u64> {
-    if vault.total_borrowed == 0 {
-        return Ok(vault.borrow_index);
-    }
-
-    let time_elapsed = (current_time - vault.last_update_time) as u64;
-    let interest_factor = (vault.borrow_rate * time_elapsed) / SECONDS_PER_YEAR;
-    Ok(vault.borrow_index + (vault.borrow_index * interest_factor) / PRECISION)
-}
-
-fn update_borrow_rate(vault: &mut Vault, token_balance: u64) -> Result<()> {
-    let total_assets = get_total_assets(token_balance, vault)? + vault.total_reserves;
-
-    if total_assets == 0 {
-        vault.borrow_rate = BASE_RATE;
-        return Ok(());
-    }
-
-    let utilization_rate = (vault.total_borrowed * PRECISION) / total_assets;
-
-    if utilization_rate <= KINK {
-        vault.borrow_rate = BASE_RATE + (utilization_rate * UTILIZATION_MULTIPLIER) / PRECISION;
-    } else {
-        let normal_rate = BASE_RATE + (KINK * UTILIZATION_MULTIPLIER) / PRECISION;
-        let excess_utilization = utilization_rate - KINK;
-        vault.borrow_rate = normal_rate + (excess_utilization * JUMP_MULTIPLIER) / PRECISION;
-    }
-
-    Ok(())
-}
-
-fn get_total_assets(token_balance: u64, vault: &Vault) -> Result<u64> {
-    let current_total_borrowed = if vault.total_borrowed == 0 {
-        0
-    } else {
-        let clock = Clock::get()?;
-        let current_index = calculate_current_borrow_index(vault, clock.unix_timestamp)?;
-        (vault.total_borrowed * current_index) / vault.borrow_index
-    };
-
-    Ok(token_balance + current_total_borrowed - vault.total_reserves)
+fn get_total_assets(token_balance: u64, _vault: &Vault) -> Result<u64> {
+    Ok(token_balance)
 }
 
 #[derive(Accounts)]
@@ -295,7 +221,7 @@ pub struct InitializeVault<'info> {
         init,
         payer = owner,
         space = 8 + 32 *4 + 8*7 + 1,
-        seeds = [b"vault", asset_mint.key().as_ref(), owner.key().as_ref()],
+        seeds = [VAULT_SEED, asset_mint.key().as_ref(), owner.key().as_ref()],
         bump
     )]
     pub vault: Account<'info, Vault>,
@@ -376,7 +302,7 @@ pub struct Deposit<'info> {
     /// CHECK: This PDA is derived deterministically from user_nft_mint and used as authority for user_share_token.
     /// It's safe because: 1) Seeds are deterministic, 2) Only used as token account authority, 3) No data stored in this account
     #[account(
-    seeds = [b"user_shares", user_nft_mint.key().as_ref()],
+    seeds = [USER_SHARES_SEED, user_nft_mint.key().as_ref()],
     bump
     )]
     pub user_share_pda: AccountInfo<'info>,
@@ -393,7 +319,7 @@ pub struct Deposit<'info> {
         init_if_needed,
         payer = user,
         space = 8 + std::mem::size_of::<UserInfo>(),
-        seeds = [b"vault", user_nft_token.key().as_ref(), user_share_token.key().as_ref()],
+        seeds = [USER_INFO_SEED, user_nft_token.key().as_ref(), user_share_token.key().as_ref()],
         bump
     )]
     pub nft_info: Account<'info, UserInfo>,
@@ -448,7 +374,7 @@ pub struct Withdraw<'info> {
     /// CHECK: This PDA is derived deterministically from user_nft_mint and used as authority for user_share_token.
     /// It's safe because: 1) Seeds are deterministic, 2) Only used as token account authority, 3) No data stored in this account
     #[account(
-    seeds = [b"user_shares", user_nft_mint.key().as_ref()],
+    seeds = [USER_SHARES_SEED, user_nft_mint.key().as_ref()],
     bump
     )]
     pub user_share_pda: AccountInfo<'info>,
@@ -465,7 +391,7 @@ pub struct Withdraw<'info> {
         init_if_needed,
         payer = user,
         space = 8 + std::mem::size_of::<UserInfo>(),
-        seeds = [b"vault", user_nft_token.key().as_ref(), user_share_token.key().as_ref()],
+        seeds = [USER_INFO_SEED, user_nft_token.key().as_ref(), user_share_token.key().as_ref()],
         bump
     )]
     pub nft_info: Account<'info, UserInfo>,
@@ -473,6 +399,22 @@ pub struct Withdraw<'info> {
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, AssociatedToken>,
+}
+
+#[derive(Accounts)]
+pub struct CloseVault<'info> {
+    #[account(
+        mut,
+        close = authority,
+        seeds = [VAULT_SEED, asset_mint.key().as_ref(), authority.key().as_ref()],
+        bump = vault.bump
+    )]
+    pub vault: Account<'info, Vault>,
+
+    pub asset_mint: Account<'info, Mint>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
 }
 
 #[error_code]
@@ -488,6 +430,9 @@ pub enum ErrorCode {
 
     #[msg("Insufficent reserves")]
     InsufficientLiquidity,
+
+    #[msg("Mathematical overflow")]
+    MathOverflow,
 }
 
 #[event]
