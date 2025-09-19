@@ -25,17 +25,14 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
-test_vault_full = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/vault_full.ts"
-deploy_test = "ts-node -T migrations/deploy.ts"
-token_account = "ts-node -T migrations/tokenAccount.ts"
-token_ata = "ts-node -T migrations/addTokenATA.ts"
-token_check = "ts-node -T migrations/checkShareTokens.ts"
+
 token_init = "ts-node -T migrations/initTestToken.ts"
 find_token = "ts-node -T migrations/findTokenMint.ts"
-re_init_vault = "ts-node -T migrations/reInitVault.ts"
+re_init_vault = "ts-node -T migrations/initVault.ts"
+
 check_vault = "ts-node -T migrations/checkVault.ts"
-re_cr_vault = "ts-node -T migrations/reCreateVaults.ts"
 close_vault = "ts-node -T migrations/closeVault.ts"
+
 [test]
 startup_wait = 10000
 

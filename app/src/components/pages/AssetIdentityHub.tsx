@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { useAppKitAccount } from "@reown/appkit/react";
@@ -32,7 +32,6 @@ import {
   CheckCircle2,
   XCircle,
   Copy,
-  AlertCircle,
   Coins,
   Sparkles,
   RefreshCw,

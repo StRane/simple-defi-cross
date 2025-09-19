@@ -2,13 +2,13 @@ import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createAppKit } from "@reown/appkit/react";
 import { WagmiProvider } from "wagmi";
-import { ThemeProvider, useTheme } from "@/components/ThemeProvider";
+import { ThemeProvider, useTheme } from "@/components/shared/ThemeProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ActionButtonList } from "./components/ActionButtonList";
-import {VaultManager} from "@/components/VaultManager";
+import { ActionButtonList } from "@/components/shared/ActionButtonList";
+import {VaultManager} from "@/components/pages/VaultManager";
 import { SelectionProvider } from "@/context/SelectionContext";
 import { useNetworkSync } from '@/lib/useNetworkSync';
-import { AssetIdentityHub } from "./components/AssetIdentityHub";
+import { AssetIdentityHub } from "@/components/pages/AssetIdentityHub";
 
 import {
   projectId,

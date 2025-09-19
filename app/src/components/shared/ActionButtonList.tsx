@@ -6,7 +6,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Wallet, Coins, Zap } from "lucide-react";
-import { ModeToggle } from "@/components/ModeToggle";
+import { ModeToggle } from "@/components/shared/ModeToggle";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
