@@ -6,10 +6,6 @@ import { PublicKey } from '@solana/web3.js';
 import type { TestToken } from '@/types/test_token';
 import { useNetworkStore } from './networkStore';
 
-// const CONFIG = {
-//     PROGRAM_ID: 'HY3dPfn3MJqLSbQm4jExye2H8KZag8AkD2AmBXgL2SKm',
-//     MINT_AUTH_SEED: Buffer.from("mint_auth"),
-// };
 
 export interface TokenInfo {
     mint: PublicKey;

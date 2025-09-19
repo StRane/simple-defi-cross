@@ -6,18 +6,7 @@ import { PublicKey } from '@solana/web3.js';
 import type { SimpleVault } from '@/types/simple_vault';
 import { useNetworkStore } from './networkStore';
 import { BN } from '@coral-xyz/anchor';
-
-const CONFIG = {
-    PROGRAM_ID: '6szSVnHy2GrCi6y7aQxJfQG9WpVkTgdB6kDXixepvdoW',
-    VAULT_SEED: Buffer.from("vault_v3"),
-    USER_INFO_SEED: Buffer.from("user_info_v3"),
-    USER_SHARES_SEED: Buffer.from("user_shares_v3"),
-    COLLECTION_PDA: new PublicKey('EoZ5NFigrZ7uqUUSH6ShDsYGMooe5ziTfgWvAbFmVTXt'),
-    VAULT_ASSET_MINT: new PublicKey("4kXBWAG92UZA1FPEQDN5bjePoFyQsbTnZ9rpxgRBbFYk"),
-    VAULT_PDA: new PublicKey("DbCxNx4uvjK2wxvJbrd5DVJ6jVM8eJirYk8RbAL9Mvt1"),
-    SHARE_MINT: new PublicKey("5CTdzZxPhqC4DWpTM5MFzwqCtHFmKQTsXE7VWUC6UxTG"),
-    VAULT_TOKEN_ACCOUNT: new PublicKey("Ak7DxLGEauBkW769NSRvA9kVkc41SxJKK29mbeJu5gzE"),
-};
+import { CONFIG, VaultUtils } from '@/config/programs';
 
 export interface VaultData {
     owner: PublicKey;
@@ -322,8 +311,8 @@ export const useVaultStore = create<VaultStore>()(
 
             getVaultConfig: () => {
                 console.log('[VaultStore] Getting vault config:', {
-                    programId: CONFIG.PROGRAM_ID,
-                    vaultPda: CONFIG.VAULT_PDA.toBase58(),
+                    programId: CONFIG.VAULT_PROGRAM_ID,
+                    vaultPda: VaultUtils.getVaultPDA(),
                     assetMint: CONFIG.VAULT_ASSET_MINT.toBase58()
                 });
                 return CONFIG;

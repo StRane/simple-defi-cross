@@ -5,16 +5,16 @@ skip-lint = false
 [programs.localnet]
 #unique_id = "u7X6Ut4Mm9wqQ8ci2XiUjtcyqRJnHScStUo81Deh6bA"
 #spl_4626_vault="987M4VVtt2T3bHBV6cXmeMsZgAxbMs2HUBaaAcpqFeyW"
-simple_vault="6szSVnHy2GrCi6y7aQxJfQG9WpVkTgdB6kDXixepvdoW"
-unique_low="5XdsDEXPiHndfBkrvJKjsFZy3Zf95bUZLRZQvJ4W6Bpa"
-test_token="HY3dPfn3MJqLSbQm4jExye2H8KZag8AkD2AmBXgL2SKm"
+simple_vault="vzNns3iaqEp6K1D2haX4coHkzykVBvm1jgxg8UTNE11"
+unique_low="GS6JFi429riGEEMnuCQmM6jzuUUGuRmMw2fb6hYsfSdp"
+test_token="BBW3kuzEFHXFCfcd6AKsNGMpes7sinmzudoYfH6Pdide"
 
 [programs.testnet]
 #unique_id_nft = "u7X6Ut4Mm9wqQ8ci2XiUjtcyqRJnHScStUo81Deh6bA"
 #spl_4626_vault="987M4VVtt2T3bHBV6cXmeMsZgAxbMs2HUBaaAcpqFeyW"
-simple_vault="6szSVnHy2GrCi6y7aQxJfQG9WpVkTgdB6kDXixepvdoW"
-unique_low="5XdsDEXPiHndfBkrvJKjsFZy3Zf95bUZLRZQvJ4W6Bpa"
-test_token="HY3dPfn3MJqLSbQm4jExye2H8KZag8AkD2AmBXgL2SKm"
+simple_vault="vzNns3iaqEp6K1D2haX4coHkzykVBvm1jgxg8UTNE11"
+unique_low="GS6JFi429riGEEMnuCQmM6jzuUUGuRmMw2fb6hYsfSdp"
+test_token="BBW3kuzEFHXFCfcd6AKsNGMpes7sinmzudoYfH6Pdide"
 
 [registry]
 url = "https://api.apr.dev"
@@ -25,6 +25,7 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+nft_init = "ts-node -T migrations/initNFTCollection.ts"
 
 token_init = "ts-node -T migrations/initTestToken.ts"
 find_token = "ts-node -T migrations/findTokenMint.ts"

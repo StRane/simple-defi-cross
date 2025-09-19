@@ -7,8 +7,8 @@ import {
 } from '@solana/web3.js';
 import { AnchorWallet } from '@solana/wallet-adapter-react';
 
-import type { SimpleVault } from '@/types/simple_vault';
-import IDL from '@/idl/simple_vault.json';
+import type { SimpleVault } from '@/../../target/types/simple_vault';
+import IDL from '@/../../target/idl/simple_vault.json';
 
 // Import stores
 import { useNetworkStore } from '@/store/networkStore';

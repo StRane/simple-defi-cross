@@ -6,13 +6,7 @@ import { PublicKey } from '@solana/web3.js';
 import type { UniqueLow } from '@/types/unique_low';
 import { useNetworkStore } from './networkStore';
 
-const CONFIG = {
-    PROGRAM_ID: '5XdsDEXPiHndfBkrvJKjsFZy3Zf95bUZLRZQvJ4W6Bpa',
-    COLLECTION_SEED: Buffer.from("collection"),
-    USER_STATE_SEED: Buffer.from("user_state"),
-    // Hardcoded collection PDA from your config
-    COLLECTION_PDA: new PublicKey("EoZ5NFigrZ7uqUUSH6ShDsYGMooe5ziTfgWvAbFmVTXt"),
-};
+import { CONFIG } from '@/config/programs';
 
 export interface Collection {
     authority: PublicKey;
@@ -119,7 +113,7 @@ export const useUniqueIdStore = create<UniqueIdStore>()(
                 console.log('[UniqueIdStore] === SET PROGRAM START ===');
                 console.log('[UniqueIdStore] Setting program:', {
                     hasProgram: !!program,
-                    programId: program ? CONFIG.PROGRAM_ID : null,
+                    programId: program ? CONFIG.NFT_PROGRAM_ID : null,
                     previousProgram: !!state.program
                 });
                 

@@ -41,8 +41,8 @@ export const CONFIG = {
         VAULT: Buffer.from("vault_" + requireEnv('VITE_VAULT_VERSION')),
         USER_INFO: Buffer.from("user_info_" + requireEnv('VITE_VAULT_VERSION')),
         USER_SHARES: Buffer.from("user_shares_" + requireEnv('VITE_VAULT_VERSION')),
-        COLLECTION: Buffer.from("collection"),
-        USER_STATE: Buffer.from("user_state"),
+        COLLECTION: Buffer.from("collection_" + requireEnv('VITE_VAULT_VERSION')),
+        USER_STATE: Buffer.from("user_state_"+ requireEnv('VITE_VAULT_VERSION')),
     },
 
     TEST_TOKEN_MINTS: [

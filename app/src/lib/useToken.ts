@@ -6,7 +6,6 @@ import {
     Commitment,
 } from '@solana/web3.js';
 import {
-    TOKEN_PROGRAM_ID,
     getAssociatedTokenAddressSync,
     getAccount,
     TokenAccountNotFoundError,
@@ -14,8 +13,8 @@ import {
 } from '@solana/spl-token';
 import { AnchorWallet } from '@solana/wallet-adapter-react';
 
-import type { TestToken } from '@/types/test_token';
-import IDL from '@/idl/test_token.json';
+import type { TestToken } from '@/../../target/types/test_token';
+import IDL from '@/../../target/idl/test_token.json';
 
 // Import stores
 import { useNetworkStore } from '@/store/networkStore';

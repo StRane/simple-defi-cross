@@ -6,7 +6,7 @@ use unique_low::Collection;
 pub mod constants;
 use constants::*;
 
-declare_id!("6szSVnHy2GrCi6y7aQxJfQG9WpVkTgdB6kDXixepvdoW");
+declare_id!("vzNns3iaqEp6K1D2haX4coHkzykVBvm1jgxg8UTNE11");
 
 #[program]
 pub mod simple_vault {
@@ -103,30 +103,24 @@ pub mod simple_vault {
     }
 
     pub fn withdraw(ctx: Context<Withdraw>, shares: u64) -> Result<()> {
-        msg!("=== WITHDRAW DEBUG START ===");
-        msg!("Shares requested: {}", shares);
 
         require!(shares > 0, ErrorCode::InvalidAmount);
 
         let user_info = &mut ctx.accounts.nft_info;
-        msg!("User shares available: {}", user_info.shares);
+   
         require!(user_info.shares >= shares, ErrorCode::InsufficientShares);
 
         let vault = &mut ctx.accounts.vault;
-        msg!("Vault total shares: {}", vault.total_shares);
+
 
         // Get vault balance
         let total_assets = ctx.accounts.vault_token_account.amount;
-        msg!("Total assets in vault: {}", total_assets);
+ 
 
         // Calculate withdrawal
         let assets_to_withdraw =
             ((shares as u128) * (total_assets as u128) / (vault.total_shares as u128)) as u64;
-        msg!("Calculated assets to withdraw: {}", assets_to_withdraw);
-        msg!(
-            "Assets >= withdraw amount? {}",
-            total_assets >= assets_to_withdraw
-        );
+
 
         require!(
             total_assets >= assets_to_withdraw,
