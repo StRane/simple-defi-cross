@@ -490,7 +490,7 @@ export const VaultManager: React.FC = () => {
                 Vault Operations
               </CardTitle>
               <CardDescription>
-                Deposit or withdraw from the vault using your selected NFT
+                Deposit or withdraw from the vault using your selected ID
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -515,7 +515,7 @@ export const VaultManager: React.FC = () => {
                       }
                     />
                     <div className="text-xs text-muted-foreground">
-                      Amount will be deposited using selected NFT as position
+                      Amount will be deposited using selected ID as position
                       identifier
                     </div>
                   </div>
@@ -543,7 +543,7 @@ export const VaultManager: React.FC = () => {
                     <div className="text-xs text-muted-foreground">
                       {selectedNFTPosition
                         ? `Available shares: ${selectedNFTPosition.shareAmount.toLocaleString()}`
-                        : "Select an NFT to see your position"}
+                        : "Select an ID to see your position"}
                     </div>
                   </div>
                   <Button
@@ -561,7 +561,7 @@ export const VaultManager: React.FC = () => {
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                Please select both a token and NFT from the Asset Identity Hub
+                Please select both a token and ID from the Asset Identity Hub
                 to enable vault operations.
               </AlertDescription>
             </Alert>
@@ -577,7 +577,7 @@ export const VaultManager: React.FC = () => {
                 Current Position
               </CardTitle>
               <CardDescription>
-                Your vault position for the selected NFT
+                Your vault position for the selected ID
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -586,7 +586,7 @@ export const VaultManager: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-muted-foreground">
-                        NFT
+                        ID
                       </p>
                       <p className="font-mono text-sm">
                         {selectedNFTPosition.nftMint.toBase58().slice(0, 8)}...
@@ -629,8 +629,8 @@ export const VaultManager: React.FC = () => {
                   <CreditCard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">
                     {selectedNFT
-                      ? "No position found for selected NFT"
-                      : "Select an NFT to view position"}
+                      ? "No position found for selected ID"
+                      : "Select an ID to view position"}
                   </p>
                 </div>
               )}

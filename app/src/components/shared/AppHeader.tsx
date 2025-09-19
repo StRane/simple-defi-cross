@@ -120,7 +120,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </div>
 
           <div className="space-y-1">
-            <Label className="text-sm text-muted-foreground">Selected NFT</Label>
+            <Label className="text-sm text-muted-foreground">Selected ID</Label>
             <div className="flex items-center gap-2">
               {selectedNFT ? (
                 <>

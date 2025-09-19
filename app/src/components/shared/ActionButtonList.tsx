@@ -77,7 +77,7 @@ export const ActionButtonList = () => {
               </TabsTrigger>
               <TabsTrigger value="vault" className="flex items-center gap-2">
                 <Coins className="w-4 h-4" />
-                NFT Vault
+                ID Vault
               </TabsTrigger>
             </TabsList>
           </Tabs>

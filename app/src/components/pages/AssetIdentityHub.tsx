@@ -349,7 +349,7 @@ export const AssetIdentityHub: React.FC = () => {
             Asset & Identity Hub
           </CardTitle>
           <CardDescription>
-            Manage your tokens and NFT identity in one place. Network:{" "}
+            Manage your tokens and identity in one place. Network:{" "}
             {currentNetwork}
           </CardDescription>
         </CardHeader>
@@ -411,7 +411,7 @@ export const AssetIdentityHub: React.FC = () => {
             <div className="space-y-1">
               <Label className="text-sm text-muted-foreground flex items-center gap-1">
                 <Sparkles className="h-3 w-3" />
-                NFT Identity
+                Identity
               </Label>
               <div className="flex items-center gap-2">
                 <Badge
@@ -425,7 +425,7 @@ export const AssetIdentityHub: React.FC = () => {
                   ) : (
                     <XCircle className="h-3 w-3" />
                   )}
-                  {readiness.nfts.count} NFTs
+                  {readiness.nfts.count} IDs
                 </Badge>
                 {readiness.nfts.selected && (
                   <Badge variant="outline" className="text-xs">
@@ -445,7 +445,7 @@ export const AssetIdentityHub: React.FC = () => {
                   <div>
                     <h3 className="font-semibold">Quick Setup</h3>
                     <p className="text-sm text-muted-foreground">
-                      Get started with tokens and NFT identity in one click
+                      Get started with tokens and identity in one click
                     </p>
                   </div>
                   <Button
@@ -473,7 +473,7 @@ export const AssetIdentityHub: React.FC = () => {
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertDescription className="flex items-center justify-between">
                   <span>
-                    ✅ Ready for vault operations! You have tokens and NFT
+                    ✅ Ready for vault operations! You have tokens and
                     identity.
                   </span>
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -556,7 +556,7 @@ export const AssetIdentityHub: React.FC = () => {
                 {/* Selected NFT */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">
-                    Selected NFT Identity
+                    Selected Identity
                   </Label>
                   {selectedNFT ? (
                     <div className="p-3 bg-muted rounded-lg">
@@ -584,7 +584,7 @@ export const AssetIdentityHub: React.FC = () => {
                   ) : (
                     <div className="p-3 border-2 border-dashed rounded-lg text-center">
                       <p className="text-sm text-muted-foreground">
-                        No NFT selected
+                        No ID selected
                       </p>
                     </div>
                   )}
@@ -739,7 +739,7 @@ export const AssetIdentityHub: React.FC = () => {
             {/* NFT Management */}
             <Card>
               <CardHeader>
-                <CardTitle>NFT Identity</CardTitle>
+                <CardTitle>Identity</CardTitle>
                 <CardDescription>
                   Select your identity NFT for verification
                 </CardDescription>
@@ -767,7 +767,7 @@ export const AssetIdentityHub: React.FC = () => {
                                     variant="outline"
                                     className="font-mono text-xs"
                                   >
-                                    NFT #
+                                    ID #
                                     {tokenData?.tokenId?.toString() ||
                                       index + 1}
                                   </Badge>
@@ -803,10 +803,10 @@ export const AssetIdentityHub: React.FC = () => {
                         <Info className="h-4 w-4" />
                         <AlertDescription>
                           {readiness.nfts.loading
-                            ? "Loading NFTs..."
+                            ? "Loading IDs..."
                             : !readiness.nfts.collectionReady
                             ? "Collection not initialized. Run quick setup first."
-                            : "No NFTs found. Mint an NFT first."}
+                            : "No IDs found. Mint an NFT first."}
                         </AlertDescription>
                       </Alert>
                     )}
@@ -833,7 +833,7 @@ export const AssetIdentityHub: React.FC = () => {
               {/* Collection Form */}
               {!readiness.nfts.collectionReady && (
                 <div className="space-y-4">
-                  <h3 className="font-semibold">Initialize NFT Collection</h3>
+                  <h3 className="font-semibold">Initialize ID Collection</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Collection Name</Label>
@@ -951,7 +951,7 @@ export const AssetIdentityHub: React.FC = () => {
                     <span>{readiness.tokens.available ? "✅" : "❌"}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>NFT Collection Ready:</span>
+                    <span>ID Collection Ready:</span>
                     <span>{readiness.nfts.collectionReady ? "✅" : "❌"}</span>
                   </div>
                   <div className="flex justify-between">
