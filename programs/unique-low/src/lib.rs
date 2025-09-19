@@ -14,15 +14,15 @@ use solana_program::{
     program::invoke_signed,
 };
 
-declare_id!("GS6JFi429riGEEMnuCQmM6jzuUUGuRmMw2fb6hYsfSdp");
+declare_id!("3tjocQ6BpRfAniWTVeC3fp7UrpGeaBbBzBZkA4x5eVVF");
 
 // ================================
 // CONSTANTS
 // ================================
 
 // Seeds for PDA derivation
-pub const COLLECTION_SEED: &[u8] = b"collection_v1";
-pub const USER_STATE_SEED: &[u8] = b"user_state_v1";
+pub const COLLECTION_SEED: &[u8] = b"collection_v2";
+pub const USER_STATE_SEED: &[u8] = b"user_state_v2";
 
 // Maximum sizes for collection vectors
 pub const MAX_COLLECTION_SIZE: usize = 50;

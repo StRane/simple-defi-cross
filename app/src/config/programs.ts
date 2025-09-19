@@ -78,9 +78,9 @@ export class VaultUtils {
     }
 
     // User info PDA
-    static getUserInfoPDA(nftTokenAccount: PublicKey, shareTokenAccount: PublicKey): [PublicKey, number] {
+    static getUserInfoPDA(nftMint: PublicKey, shareTokenAccount: PublicKey): [PublicKey, number] {
         return PublicKey.findProgramAddressSync(
-            [CONFIG.SEEDS.USER_INFO, nftTokenAccount.toBuffer(), shareTokenAccount.toBuffer()],
+            [CONFIG.SEEDS.USER_INFO, nftMint.toBuffer(), shareTokenAccount.toBuffer()],
             CONFIG.VAULT_PROGRAM_ID
         );
     }
@@ -136,7 +136,7 @@ export class VaultUtils {
         const userShareTokenAccount = this.getUserShareTokenAccount(userSharesPda);
         const vaultTokenAccount = this.getVaultTokenAccount();
 
-        const [userInfoPda, userInfoBump] = this.getUserInfoPDA(userNftTokenAccount, userShareTokenAccount);
+        const [userInfoPda, userInfoBump] = this.getUserInfoPDA(nftMint, userShareTokenAccount);
 
         return {
             // PDAs with bumps

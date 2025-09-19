@@ -16,7 +16,7 @@ async function main() {
 
   // Derive mint authority PDA
   const [mintAuthPda, mintAuthBump] = PublicKey.findProgramAddressSync(
-    [Buffer.from("mint_auth_v1")],
+    [Buffer.from("mint_auth_v2")],
     testTokenProgram.programId
   );
 

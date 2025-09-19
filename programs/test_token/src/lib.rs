@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount};
 
-declare_id!("BBW3kuzEFHXFCfcd6AKsNGMpes7sinmzudoYfH6Pdide");
+declare_id!("BSCgQLPHjjvoH6qbG59dyxUTfcK6jAqFDdPk6MNN7sEz");
 #[program]
 pub mod test_token {
     use super::*;
@@ -15,7 +15,7 @@ pub mod test_token {
 
     pub fn mint_tokens(ctx: Context<MintTokens>, amount: u64) -> Result<()> {
         // Anyone can call this → mint freely
-        let seeds: &[&[&[u8]]] = &[&[b"mint_auth_v1", &[ctx.accounts.mint_auth.bump]]];
+        let seeds: &[&[&[u8]]] = &[&[b"mint_auth_v2", &[ctx.accounts.mint_auth.bump]]];
 
         token::mint_to(
             CpiContext::new_with_signer(
@@ -43,7 +43,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = payer,
-        mint::decimals = 6,
+        mint::decimals = 9,
         mint::authority = mint_auth,
         mint::freeze_authority = mint_auth
     )]
@@ -54,7 +54,7 @@ pub struct Initialize<'info> {
         init,         
         payer = payer,
         space = 8 + std::mem::size_of::<MintAuthorityPda>(),
-        seeds = [b"mint_auth_v1"],
+        seeds = [b"mint_auth_v2"],
         bump
     )]
     pub mint_auth: Account<'info, MintAuthorityPda>,
@@ -82,7 +82,7 @@ pub struct MintTokens<'info> {
     pub recipient: Account<'info, TokenAccount>,
 
     #[account(
-        seeds = [b"mint_auth_v1"],
+        seeds = [b"mint_auth_v2"],
         bump = mint_auth.bump
     )]
     pub mint_auth: Account<'info, MintAuthorityPda>,

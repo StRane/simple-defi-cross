@@ -24,14 +24,14 @@ async function main() {
   // Your EXISTING working infrastructure
   const CONFIG = {
     // ✅ Use your CURRENT deployed program ID
-    existingAssetMint: new PublicKey("DjgG2FYvDLnpu7Br5wcHCuYapjXdZAi29qEBxghBgw6P"),
-    nftCollection: new PublicKey("CV5wdtZLuBeiUfbnFHUjkyqGw5XrbH869Ah86iE4hFur"),
+    existingAssetMint: new PublicKey("2dxwdENVaN3sq6F6vRdeXjAGjSFyu8YaUEABN4KdrCjq"),
+    nftCollection: new PublicKey("Ap7WzrvZU6HauqP9TCdNkpvQamQ5tBkZGyaFZbGgRm87"),
 
     // ✅ CORRECT program ID
-    vaultProgramId: new PublicKey("vzNns3iaqEp6K1D2haX4coHkzykVBvm1jgxg8UTNE11"),
+    vaultProgramId: new PublicKey("4g14aJ5JEN3og3RTjrMJFuTJbYFqQ8GrcyuoS36xCnQL"),
 
-    testTokenProgramId: new PublicKey("BBW3kuzEFHXFCfcd6AKsNGMpes7sinmzudoYfH6Pdide"),
-    mintAuthPda: new PublicKey("AjryaGMqQ6ZHPr7utSumMubxFLkk5aFGTVFMNQqZ1sCh"),
+    testTokenProgramId: new PublicKey("BSCgQLPHjjvoH6qbG59dyxUTfcK6jAqFDdPk6MNN7sEz"),
+    mintAuthPda: new PublicKey("4BFqXxQTPhL2MY84mWcaZNhN8gWmxVpa6PTDkU2wwCA2"),
   };
 
   console.log("✅ Using EXISTING asset mint:", CONFIG.existingAssetMint.toBase58());
@@ -77,7 +77,7 @@ async function main() {
 
     const [newVaultPda] = PublicKey.findProgramAddressSync(
       [
-        Buffer.from("vault_v1"),
+        Buffer.from("vault_v2"),
         CONFIG.existingAssetMint.toBuffer(), // ✅ Use existing asset mint
         wallet.publicKey.toBuffer()
       ],
@@ -160,9 +160,9 @@ async function main() {
       PROGRAM_ID: CONFIG.vaultProgramId.toBase58(),
 
       // Seeds (for PDA derivation in hook - from your contract)
-      VAULT_SEED: "vault_v1", // ✅ Match constants
-      USER_SHARES_SEED: "user_shares_v1", // ✅ Match constants
-      USER_INFO_SEED: "user_info_v1", // ✅ Match constants
+      VAULT_SEED: "vault_v2", // ✅ Match constants
+      USER_SHARES_SEED: "user_shares_v2", // ✅ Match constants
+      USER_INFO_SEED: "user_info_v2", // ✅ Match constants
 
       // Core vault infrastructure (static - same for all users)
       COLLECTION_PDA: CONFIG.nftCollection.toBase58(),
@@ -174,9 +174,9 @@ async function main() {
       // Dynamic derivation patterns (from your contract seeds)
       derivationPatterns: {
         // From your contract: seeds = [b"vault", user_nft_token.key().as_ref(), user_share_token.key().as_ref()]
-        nftUserInfoSeeds: ["vault_v1", "[USER_NFT_TOKEN_ACCOUNT]", "[USER_SHARE_TOKEN_ACCOUNT]"],
+        nftUserInfoSeeds: ["vault_v2", "[USER_NFT_TOKEN_ACCOUNT]", "[USER_SHARE_TOKEN_ACCOUNT]"],
         // From your contract: seeds = [b"user_shares", user_nft_mint.key().as_ref()]  
-        userSharePdaSeeds: ["user_shares_v1", "[USER_NFT_MINT]"],
+        userSharePdaSeeds: ["user_shares_v2", "[USER_NFT_MINT]"],
         // Standard ATA derivation
         userShareTokenSeeds: "ATA of user_share_pda + share_mint",
       }

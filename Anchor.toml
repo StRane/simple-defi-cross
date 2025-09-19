@@ -5,16 +5,16 @@ skip-lint = false
 [programs.localnet]
 #unique_id = "u7X6Ut4Mm9wqQ8ci2XiUjtcyqRJnHScStUo81Deh6bA"
 #spl_4626_vault="987M4VVtt2T3bHBV6cXmeMsZgAxbMs2HUBaaAcpqFeyW"
-simple_vault="vzNns3iaqEp6K1D2haX4coHkzykVBvm1jgxg8UTNE11"
-unique_low="GS6JFi429riGEEMnuCQmM6jzuUUGuRmMw2fb6hYsfSdp"
-test_token="BBW3kuzEFHXFCfcd6AKsNGMpes7sinmzudoYfH6Pdide"
+simple_vault="4g14aJ5JEN3og3RTjrMJFuTJbYFqQ8GrcyuoS36xCnQL"
+unique_low="3tjocQ6BpRfAniWTVeC3fp7UrpGeaBbBzBZkA4x5eVVF"
+test_token="BSCgQLPHjjvoH6qbG59dyxUTfcK6jAqFDdPk6MNN7sEz"
 
 [programs.testnet]
 #unique_id_nft = "u7X6Ut4Mm9wqQ8ci2XiUjtcyqRJnHScStUo81Deh6bA"
 #spl_4626_vault="987M4VVtt2T3bHBV6cXmeMsZgAxbMs2HUBaaAcpqFeyW"
-simple_vault="vzNns3iaqEp6K1D2haX4coHkzykVBvm1jgxg8UTNE11"
-unique_low="GS6JFi429riGEEMnuCQmM6jzuUUGuRmMw2fb6hYsfSdp"
-test_token="BBW3kuzEFHXFCfcd6AKsNGMpes7sinmzudoYfH6Pdide"
+simple_vault="4g14aJ5JEN3og3RTjrMJFuTJbYFqQ8GrcyuoS36xCnQL"
+unique_low="3tjocQ6BpRfAniWTVeC3fp7UrpGeaBbBzBZkA4x5eVVF"
+test_token="BSCgQLPHjjvoH6qbG59dyxUTfcK6jAqFDdPk6MNN7sEz"
 
 [registry]
 url = "https://api.apr.dev"
@@ -29,7 +29,7 @@ nft_init = "ts-node -T migrations/initNFTCollection.ts"
 
 token_init = "ts-node -T migrations/initTestToken.ts"
 find_token = "ts-node -T migrations/findTokenMint.ts"
-re_init_vault = "ts-node -T migrations/initVault.ts"
+init_vault = "ts-node -T migrations/initVault.ts"
 
 check_vault = "ts-node -T migrations/checkVault.ts"
 close_vault = "ts-node -T migrations/closeVault.ts"

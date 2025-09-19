@@ -6,7 +6,7 @@ use unique_low::Collection;
 pub mod constants;
 use constants::*;
 
-declare_id!("vzNns3iaqEp6K1D2haX4coHkzykVBvm1jgxg8UTNE11");
+declare_id!("4g14aJ5JEN3og3RTjrMJFuTJbYFqQ8GrcyuoS36xCnQL");
 
 #[program]
 pub mod simple_vault {
@@ -37,6 +37,11 @@ pub mod simple_vault {
 
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
         let vault = &mut ctx.accounts.vault;
+        let total_assets = ctx.accounts.vault_token_account.amount;
+        msg!("Before token transfer");
+        msg!("Withdraw amount {:?}", amount);
+        msg!("Vault total shares {:?}", vault.total_shares);
+        msg!("Pre deposit assets{:?}", ctx.accounts.vault_token_account.amount);
 
         // Transfer assets from user to vault first
         let cpi_accounts = Transfer {
@@ -48,21 +53,22 @@ pub mod simple_vault {
         token::transfer(cpi_ctx, amount)?;
 
         // Get total assets AFTER the transfer
-        let total_assets = ctx.accounts.vault_token_account.amount;
+
 
         // Standard ERC4626 share calculation
         let shares_to_mint = if vault.total_shares == 0 {
             // First deposit gets 1:1 shares
             amount
         } else {
-            // shares = (amount * totalShares) / (totalAssets - amount)
-            // We subtract amount because we already transferred it
-            let pre_deposit_assets = total_assets.saturating_sub(amount);
-
-            if pre_deposit_assets == 0 {
+            if total_assets == 0 {
                 amount // Fallback to 1:1 if somehow no assets
             } else {
-                ((amount as u128) * (vault.total_shares as u128) / (pre_deposit_assets as u128))
+                msg!("After token transfer");
+                msg!("Withdraw amount {:?}", amount);
+                msg!("Vault total shares {:?}", vault.total_shares);
+                msg!("Pre deposit assets{:?}", total_assets);
+
+                ((amount as u128) * (vault.total_shares as u128) / (total_assets as u128))
                     as u64
             }
         };
@@ -103,24 +109,20 @@ pub mod simple_vault {
     }
 
     pub fn withdraw(ctx: Context<Withdraw>, shares: u64) -> Result<()> {
-
         require!(shares > 0, ErrorCode::InvalidAmount);
 
         let user_info = &mut ctx.accounts.nft_info;
-   
+
         require!(user_info.shares >= shares, ErrorCode::InsufficientShares);
 
         let vault = &mut ctx.accounts.vault;
 
-
         // Get vault balance
         let total_assets = ctx.accounts.vault_token_account.amount;
- 
 
         // Calculate withdrawal
         let assets_to_withdraw =
             ((shares as u128) * (total_assets as u128) / (vault.total_shares as u128)) as u64;
-
 
         require!(
             total_assets >= assets_to_withdraw,
@@ -322,7 +324,7 @@ pub struct Deposit<'info> {
         init_if_needed,
         payer = user,
         space = 8 + std::mem::size_of::<UserInfo>(),
-        seeds = [USER_INFO_SEED, user_nft_token.key().as_ref(), user_share_token.key().as_ref()],
+        seeds = [USER_INFO_SEED, user_nft_mint.key().as_ref(), user_share_token.key().as_ref()],
         bump
     )]
     pub nft_info: Account<'info, UserInfo>,
@@ -394,7 +396,7 @@ pub struct Withdraw<'info> {
         init_if_needed,
         payer = user,
         space = 8 + std::mem::size_of::<UserInfo>(),
-        seeds = [USER_INFO_SEED, user_nft_token.key().as_ref(), user_share_token.key().as_ref()],
+        seeds = [USER_INFO_SEED, user_nft_mint.key().as_ref(), user_share_token.key().as_ref()],
         bump
     )]
     pub nft_info: Account<'info, UserInfo>,

@@ -18,7 +18,7 @@ async function main() {
 
   // Derive collection PDA using your program's seeds
   const [collectionPda, collectionBump] = PublicKey.findProgramAddressSync(
-    [Buffer.from("collection_v1")], // Matches COLLECTION_SEED in your lib.rs
+    [Buffer.from("collection_v2")], // Matches COLLECTION_SEED in your lib.rs
     nftProgram.programId
   );
 
@@ -61,9 +61,9 @@ async function main() {
     
     const tx = await nftProgram.methods
       .initialize(
-        "Vault Access NFTs",                    // name
-        "VAN",                                  // symbol
-        "https://vault-nfts.com/metadata/",     // base_uri
+        "Vault Access IDs",                    // name
+        "IDx",                                  // symbol
+        "https://google.com/metadata/",     // base_uri
         wormholeProgram                         // wormhole_program_id
       )
       .accounts({
@@ -145,7 +145,7 @@ async function checkCollectionStatus() {
   const nftProgram = anchor.workspace.UniqueLow as anchor.Program<UniqueLow>;
   
   const [collectionPda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("collection_v1")],
+    [Buffer.from("collection_v2")],
     nftProgram.programId
   );
   

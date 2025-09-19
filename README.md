@@ -1,95 +1,75 @@
-# On-Chain Identity Management for DeFi
+# NFT-Gated Vault Positions
 
-> A multi-program Solana architecture exploring programmable on-chain identity systems and their applications in decentralized finance.
+> Exploring tradeable DeFi positions through NFT-based access control on Solana
 
-## Overview
+## Architectural Concept
 
-This project demonstrates advanced blockchain identity management through a sophisticated multi-program architecture on Solana. Rather than simple NFT-gating, it implements true on-chain identity infrastructure where identity tokens serve as programmable access credentials for financial operations.
+This project demonstrates binding vault positions to NFT ownership rather than wallet addresses. The core insight: if vault positions are tied to NFTs, those positions become tradeable through NFT transfers, creating a foundation for derivatives-like trading.
 
-### Core Innovation
+### Current Implementation Status
 
-**Identity-as-Infrastructure**: NFTs function as deterministic identity tokens with globally unique identifiers, enabling cross-program access control and identity-linked financial positions.
+✅ **NFT-gated vault deposits and withdrawals** (working)  
+✅ **Per-NFT position isolation** - each NFT = separate vault position (working)  
+✅ **Multi-program coordination** between NFT collection and vault (working)  
+✅ **Full-stack integration** with React frontend and Zustand state management (working)  
+🚧 **Position transferability** - architecture ready, needs marketplace integration  
+🔬 **Cross-chain position transfers** - research/framework stage via NFT bridges  
+🔬 **Risk compartmentalization** - foundation exists across multiple NFT positions  
 
-**Multi-Program Composition**: Three independent programs work together through deterministic account derivation and cross-program communication, showcasing advanced Solana development patterns.
+### Future Potential
 
-**Sub-Penny Operations**: Leverages Solana's cost efficiency for frequent identity and financial operations that would be prohibitive on other blockchains.
+* **Position trading through NFT marketplaces** - transfer NFT, transfer vault position
+* **Cross-chain position transfers** via NFT bridges using Wormhole framework
+* **Derivatives-like trading** - positions become tradeable financial instruments
+* **Risk compartmentalization** across multiple NFT positions per user
 
 ## Architecture
 
+```
+unique_low (NFT Program) → simple_vault (Access Control) → test_token (Asset Creation)
+                    ↓
+            Frontend App (React + Zustand)
+```
+
 ### Program Ecosystem
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   unique_low    │    │  simple_vault   │    │   test_token    │
-│                 │    │                 │    │                 │
-│ Identity NFTs   │───▶│ Access Control  │    │ Asset Creation  │
-│ Unique ID Gen   │    │ Vault Operations│    │ Token Minting   │
-│ Cross-Chain Msg │    │ Position Mgmt   │    │ Testing Utils   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌─────────────────┐
-                    │  Frontend App   │
-                    │                 │
-                    │ Zustand Stores  │
-                    │ State Management│
-                    │ Transaction UI  │
-                    └─────────────────┘
-```
+* **`unique_low`**: NFT collection with deterministic unique ID generation and cross-chain messaging framework
+* **`simple_vault`**: Vault operations gated by NFT ownership from specific collection, with per-NFT position isolation
+* **`test_token`**: Asset minting utility for testing vault operations
 
-### Identity System
+### Technical Implementation
 
-**Deterministic Unique IDs**: Each identity token contains a globally unique identifier generated using:
+**Multi-Program Coordination**: Independent programs communicating through well-defined PDA relationships without tight coupling. NFT ownership validation occurs through mint authority verification:
+
 ```rust
-keccak256(chainId, walletAddress, nonce)
+constraint = user_nft_mint.mint_authority == COption::Some(vault.nft_collection_address)
 ```
 
-**Cross-Program Verification**: Programs verify identity ownership through mint authority validation:
+**Dynamic Account Derivation**: User interface selections drive real-time PDA calculations for vault operations based on chosen NFT identity:
+
 ```rust
-constraint = nft_mint.mint_authority == collection_pda
+seeds = [USER_INFO_SEED, user_nft_token.key().as_ref(), user_share_token.key().as_ref()]
 ```
 
-**Cross-Chain Ready**: Wormhole integration framework for identity portability across blockchains.
+**State Management**: Frontend Zustand stores automatically synchronize with network changes and handle complex loading states across multiple async program interactions.
 
-## Technical Highlights
+## Proof of Concept
 
-### Advanced Solana Patterns
+The vault positions are already tied to NFT ownership rather than wallet addresses. This architecture enables:
 
-- **Multi-Program Composition**: Independent programs communicating through PDAs
-- **Deterministic Account Derivation**: Collision-resistant seed strategies
-- **Cross-Program Identity Verification**: Mint authority-based access control
-- **Efficient State Management**: Optimized account layouts and data structures
+- **Multiple Positions Per User**: Each NFT can have its own independent vault position
+- **Position Isolation**: Risk and rewards are isolated per NFT identity
+- **Transfer Foundation**: Position ownership follows NFT ownership (transfer NFT = transfer position)
+- **Scalable Architecture**: Supports complex access patterns and financial derivatives
 
-### Frontend Architecture
+### Example: Position Transfer Flow
 
-- **Type-Safe Integration**: Generated TypeScript types from Anchor IDL
-- **Sophisticated State Management**: Zustand stores with automatic network synchronization
-- **Transaction State Management**: Real-time transaction status tracking
-- **Loading Guards**: Race condition prevention through ref-based flags
-
-### Identity Management
-
-- **Programmable Access Control**: Identity tokens grant specific capabilities
-- **Position Linking**: Financial positions tied to identity rather than wallet
-- **Scalable Architecture**: Supports complex access patterns and permissions
-
-## Current Capabilities
-
-### Working Today
-
-✅ **On-Chain Identity Creation**: Mint NFTs with deterministic unique identifiers  
-✅ **Identity-Based Access Control**: Vault operations gated by NFT ownership  
-✅ **Multi-User Position Management**: Identity-linked financial positions  
-✅ **Cross-Chain Message Preparation**: Wormhole integration framework  
-✅ **Sub-Penny Transaction Costs**: Frequent operations at minimal cost  
-✅ **Type-Safe Frontend**: Full TypeScript integration with robust state management  
-
-### Research Implementations
-
-🔬 **Cross-Chain Identity Synchronization**: Framework for identity portability  
-🔬 **Multi-Asset Risk Aggregation**: Foundation for complex financial products  
-🔬 **Automated Operation Systems**: Programmable identity-based triggers  
+```typescript
+// User A owns NFT #123 with 1000 USDC vault position
+// User A transfers NFT #123 to User B via marketplace
+// User B now controls the 1000 USDC vault position tied to NFT #123
+// User A retains any positions tied to their other NFTs
+```
 
 ## Quick Start
 
@@ -103,21 +83,15 @@ constraint = nft_mint.mint_authority == collection_pda
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/unique-id.git
+# Clone and build programs
+git clone <repository-url>
 cd unique-id
-
-# Install dependencies
-npm install
-
-# Build programs
 anchor build
 
-# Deploy to localnet
-anchor deploy --provider.cluster localnet
-
-# Run tests
-anchor test
+# Setup frontend
+cd ./app
+yarn install  # or pnpm install
+pnpm run dev   # or yarn dev
 ```
 
 ### Basic Usage
@@ -143,9 +117,19 @@ const depositTx = await vaultProgram.methods
   .rpc();
 ```
 
-## Testing
+## Configuration
 
-The project includes comprehensive integration tests demonstrating the full user flow:
+Key configuration is managed through environment variables:
+
+```env
+VITE_VAULT_PROGRAM_ID=<your-vault-program-id>
+VITE_NFT_PROGRAM_ID=<your-nft-program-id>
+VITE_TOKEN_PROGRAM_ID=<your-token-program-id>
+VITE_COLLECTION_PDA=<your-collection-pda>
+VITE_VAULT_ASSET_MINT=<your-asset-mint>
+```
+
+## Testing
 
 ```bash
 # Run full test suite
@@ -163,44 +147,18 @@ npm run check_vault
 - Multi-user identity creation and verification
 - Cross-program access control validation
 - Complex vault operations with identity verification
+- Per-NFT position isolation and management
 - Transaction state management and error handling
-- Edge cases and failure modes
 
-## Development Patterns
+## Current Capabilities
 
-This project demonstrates several advanced Solana development patterns:
-
-### 1. Multi-Program Architecture
-Programs maintain independence while enabling composition through well-defined interfaces.
-
-### 2. Cross-Program Communication
-Identity verification spans programs without tight coupling through deterministic PDA derivation.
-
-### 3. State Management
-Frontend stores automatically synchronize with network changes and handle complex loading states.
-
-### 4. Error Handling
-Comprehensive error boundaries at program, transaction, and UI levels.
-
-## Configuration
-
-Key configuration is managed through environment variables and program constants:
-
-```rust
-// Program-level constants
-pub const COLLECTION_SEED: &[u8] = b"collection";
-pub const VAULT_SEED: &[u8] = b"vault_v3";
-pub const USER_INFO_SEED: &[u8] = b"user_info_v3";
-```
-
-```typescript
-// Frontend configuration
-export const CONFIG = {
-    VAULT_PROGRAM_ID: new PublicKey("6szSVnHy2GrCi6y7aQxJfQG9WpVkTgdB6kDXixepvdoW"),
-    NFT_PROGRAM_ID: new PublicKey("5XdsDEXPiHndfBkrvJKjsFZy3Zf95bUZLRZQvJ4W6Bpa"),
-    TOKEN_PROGRAM_ID: new PublicKey("HY3dPfn3MJqLSbQm4jExye2H8KZag8AkD2AmBXgL2SKm"),
-};
-```
+✅ **On-Chain Identity Creation**: Mint NFTs with deterministic unique identifiers  
+✅ **Identity-Based Access Control**: Vault operations gated by NFT ownership  
+✅ **Multi-User Position Management**: Identity-linked financial positions  
+✅ **Cross-Chain Message Preparation**: Wormhole integration framework  
+✅ **Sub-Penny Transaction Costs**: Frequent operations at minimal cost  
+✅ **Type-Safe Frontend**: Full TypeScript integration with robust state management  
+✅ **Advanced State Management**: Race condition prevention and network synchronization
 
 ## Repository Structure
 
@@ -216,34 +174,60 @@ unique-id/
 └── config/           # Configuration files
 ```
 
+## Development Patterns
+
+This project demonstrates several advanced Solana development patterns:
+
+### 1. Multi-Program Architecture
+Programs maintain independence while enabling composition through well-defined interfaces.
+
+### 2. Cross-Program Communication
+Identity verification spans programs without tight coupling through deterministic PDA derivation.
+
+### 3. Sophisticated Frontend State Management
+Zustand stores with automatic network synchronization, loading guards, and transaction state management.
+
+### 4. Position-Based Financial Architecture
+Financial positions tied to transferable assets rather than wallet addresses, enabling new DeFi primitives.
+
 ## Security Considerations
 
 - **Access Control**: Identity verification through cryptographic mint authority
 - **State Validation**: Comprehensive constraint checking in all programs
 - **Cross-Program Safety**: Isolated program state with controlled interactions
+- **Position Isolation**: Each NFT position is independent and cannot affect others
 - **Frontend Security**: Transaction validation and state management protection
+
+## Trading Potential
+
+While full derivatives trading requires additional infrastructure (pricing oracles, settlement mechanisms), the core architecture enables position transfers through NFT ownership changes. This creates the foundation for:
+
+- **Position Marketplaces**: Trade vault positions like any other NFT
+- **Derivatives Instruments**: Positions become tradeable financial products
+- **Risk Management**: Isolate risk across multiple NFT-based positions
+- **Liquidity Solutions**: Enable position trading without vault withdrawals
+
+## Future Directions
+
+### Immediate Roadmap
+- Enhanced marketplace integration for position trading
+- Cross-chain identity synchronization via Wormhole
+- Additional access control patterns and position types
+
+### Research Areas
+- Multi-chain position standards and portability
+- Automated market-making with NFT-based parameters
+- Advanced financial primitives with identity integration
+- Governance systems through tradeable position ownership
 
 ## Contributing
 
 This project serves as both a working implementation and a learning resource for advanced Solana development patterns. Contributions are welcome, particularly:
 
-- Additional test scenarios and edge cases
-- Documentation improvements and architectural guides
+- Additional test scenarios and position management patterns
+- Marketplace integration examples
+- Cross-chain identity and position transfer mechanisms
 - Performance optimizations and gas efficiency improvements
-- Integration examples and developer tooling
-
-## Future Directions
-
-### Immediate Roadmap
-- Enhanced cross-chain identity synchronization
-- Additional access control patterns
-- Performance optimization and benchmarking
-
-### Research Areas
-- Multi-chain identity standards
-- Programmable governance through identity
-- Advanced financial primitives with identity integration
-- Automated market-making with identity-based parameters
 
 ## Resources
 
@@ -258,4 +242,4 @@ MIT License - see LICENSE file for details.
 
 ---
 
-*This project demonstrates advanced blockchain development patterns and serves as a foundation for exploring programmable on-chain identity systems. It represents research-quality implementation suitable for learning, experimentation, and further development.*
+*This project demonstrates advanced blockchain development patterns and serves as a foundation for exploring tradeable DeFi positions through NFT-based access control. It represents production-quality implementation suitable for further development into derivatives trading platforms.*
