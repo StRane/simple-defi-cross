@@ -102,25 +102,35 @@ pub mod simple_vault {
         Ok(())
     }
 
-
-
     pub fn withdraw(ctx: Context<Withdraw>, shares: u64) -> Result<()> {
+        msg!("=== WITHDRAW DEBUG START ===");
+        msg!("Shares requested: {}", shares);
+
         require!(shares > 0, ErrorCode::InvalidAmount);
 
         let user_info = &mut ctx.accounts.nft_info;
+        msg!("User shares available: {}", user_info.shares);
         require!(user_info.shares >= shares, ErrorCode::InsufficientShares);
 
         let vault = &mut ctx.accounts.vault;
-        require!(vault.total_shares > 0, ErrorCode::InsufficientShares);
+        msg!("Vault total shares: {}", vault.total_shares);
 
-        // Simple ERC4626: assets = (shares * totalAssets) / totalShares
+        // Get vault balance
         let total_assets = ctx.accounts.vault_token_account.amount;
+        msg!("Total assets in vault: {}", total_assets);
+
+        // Calculate withdrawal
         let assets_to_withdraw =
             ((shares as u128) * (total_assets as u128) / (vault.total_shares as u128)) as u64;
+        msg!("Calculated assets to withdraw: {}", assets_to_withdraw);
+        msg!(
+            "Assets >= withdraw amount? {}",
+            total_assets >= assets_to_withdraw
+        );
 
         require!(
             total_assets >= assets_to_withdraw,
-            ErrorCode::InsufficientLiquidity
+            ErrorCode::InsufficientLiquidity // This is line 122 that's failing
         );
 
         // Burn shares first
@@ -180,8 +190,7 @@ pub mod simple_vault {
 
         Ok(())
     }
-    
-    
+
     pub fn close_vault(ctx: Context<CloseVault>) -> Result<()> {
         // Vault will be automatically closed and lamports returned to authority
         Ok(())
