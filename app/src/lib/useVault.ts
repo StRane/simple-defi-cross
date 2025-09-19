@@ -77,24 +77,6 @@ export interface TransactionState {
     message: string;
 }
 
-interface PDAValidationResult {
-    isValid: boolean;
-    errors: string[];
-    warnings: string[];
-    derivedAccounts: {
-        userNftToken: string;
-        userSharePda: string;
-        userShareToken: string;
-        nftInfo: string;
-        vaultPda: string;
-        vaultTokenAccount: string;
-    };
-    bumps: {
-        vaultBump: number;
-        userShareBump: number;
-        nftInfoBump: number;
-    };
-}
 
 export const useVault = (): UseVaultReturn => {
 

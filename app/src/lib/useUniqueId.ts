@@ -64,8 +64,7 @@ export interface UseUniqueIdReturn {
 }
 
 export const useUniqueId = (): UseUniqueIdReturn => {
-  console.log('[useUniqueId] === HOOK CALL START ===');
-  
+
   // AppKit hooks (wallet info only)
   const { address, isConnected } = useAppKitAccount();
   const { walletProvider } = useAppKitProvider<AnchorWallet>('solana');
@@ -102,21 +101,11 @@ export const useUniqueId = (): UseUniqueIdReturn => {
   const collectionPda = CONFIG.COLLECTION_PDA;
   const programId = CONFIG.NFT_PROGRAM_ID;
 
-  console.log('[useUniqueId] Store state:', {
-    hasProgram: !!program,
-    hasCollection: !!collection,
-    isCollectionInitialized,
-    totalSupply,
-    userNonce,
-    loading,
-    hasError: !!error
-  });
 
   // Network change effect - resets loading flags only
   useEffect(() => {
     const unsubscribe = useNetworkStore.subscribe((state, prevState) => {
       if (state.currentNetwork !== prevState?.currentNetwork) {
-        console.log('[useUniqueId] Network changed - resetting loading flags');
         hasInitializedProgram.current = false;
         hasLoadedNFTData.current = false;
         setUserStatePda(null);
@@ -127,8 +116,7 @@ export const useUniqueId = (): UseUniqueIdReturn => {
 
   // Program initialization effect - ONLY sets up program (no manual sync)
   useEffect(() => {
-    console.log('[useUniqueId] === PROGRAM INIT EFFECT START ===');
-
+ 
     const initializeProgram = async () => {
       if (hasInitializedProgram.current) {
         return;
@@ -161,12 +149,6 @@ export const useUniqueId = (): UseUniqueIdReturn => {
           programId
         );
 
-        console.log('[useUniqueId] Program initialized successfully:', {
-          programId: programId.toBase58(),
-          collectionPda: collectionPda.toBase58(),
-          userStatePda: derivedUserStatePda.toBase58()
-        });
-
         // Update stores
         setProgram(newProgram);
         setUserStatePda(derivedUserStatePda);
@@ -185,12 +167,10 @@ export const useUniqueId = (): UseUniqueIdReturn => {
       initializeProgram();
     }
 
-    console.log('[useUniqueId] === PROGRAM INIT EFFECT END ===');
   }, [connection, address, walletProvider, isNetworkReady, isSolanaNetwork, programId, collectionPda, setProgram, setLoading, setError]);
 
   // NFT data loading effect - ONLY loads data when program is ready
   useEffect(() => {
-    console.log('[useUniqueId] === NFT DATA LOADING EFFECT START ===');
 
     const loadNFTData = async () => {
       if (hasLoadedNFTData.current) {
@@ -211,15 +191,11 @@ export const useUniqueId = (): UseUniqueIdReturn => {
         // Fetch collection data
         const collectionData = await program.account.collection.fetchNullable(collectionPda);
         if (collectionData) {
-          // console.log('[useUniqueId] Collection data loaded:', {
-          //   name: collectionData.name,
-          //   totalSupply: collectionData.totalSupply.toNumber(),
-          //   authority: collectionData.authority.toBase58()
-          // });
+
           setCollection(collectionData);
           setIsCollectionInitialized(true);
         } else {
-          console.log('[useUniqueId] Collection not found - needs initialization');
+          
           setIsCollectionInitialized(false);
         }
 
@@ -233,14 +209,13 @@ export const useUniqueId = (): UseUniqueIdReturn => {
             nonce: userStateData.nonce.toNumber() 
           });
         } else {
-          console.log('[useUniqueId] User state not found - will be created on first mint');
+
           setUserState(null);
         }
 
         
 
       } catch (err) {
-        // console.error('[useUniqueId] Error loading NFT data:', err);
         setError(`Failed to load NFT data: ${(err as Error).message}`);
         hasLoadedNFTData.current = false;
       } finally {
@@ -253,18 +228,17 @@ export const useUniqueId = (): UseUniqueIdReturn => {
       loadNFTData();
     }
 
-    console.log('[useUniqueId] === NFT DATA LOADING EFFECT END ===');
   }, [program, userStatePda, connection, collectionPda, setCollection, setUserState, setIsCollectionInitialized, setLoading, setError]);
 // [program, userStatePda, connection, collectionPda, setCollection, setUserState, setIsCollectionInitialized, setLoading, setError, loading]);
 
   // Action functions
   const refreshAllData = useCallback(() => {
-    console.log('[useUniqueId] === REFRESH ALL DATA START ===');
+
     if (program && userStatePda && connection) {
       hasLoadedNFTData.current = false;
       // The effect will automatically trigger
     }
-    console.log('[useUniqueId] === REFRESH ALL DATA END ===');
+
   }, [program, userStatePda, connection]);
 
   // Initialize collection - ACTION only, updates store automatically
@@ -273,8 +247,7 @@ export const useUniqueId = (): UseUniqueIdReturn => {
     symbol: string,
     baseUri: string
   ): Promise<string | null> => {
-    console.log('[useUniqueId] === INITIALIZE COLLECTION START ===');
-    
+
     if (!program || !address) {
       setError('Program not initialized or wallet not connected');
       return null;
@@ -292,13 +265,6 @@ export const useUniqueId = (): UseUniqueIdReturn => {
       // Generate a random Wormhole program ID (or use a real one if you have it)
       const wormholeProgramId = Keypair.generate().publicKey;
 
-      // console.log('[useUniqueId] Initializing collection with params:', {
-      //   name,
-      //   symbol,
-      //   baseUri,
-      //   authority: address,
-      //   wormholeProgramId: wormholeProgramId.toBase58(),
-      // });
 
       const tx = await program.methods
         .initialize(name, symbol, baseUri, wormholeProgramId)
@@ -310,14 +276,13 @@ export const useUniqueId = (): UseUniqueIdReturn => {
           skipPreflight: false,
         });
 
-      console.log('[useUniqueId] Collection initialized successfully! TX:', tx);
 
       // Refresh store data after successful initialization
       refreshAllData();
 
       return tx;
     } catch (err) {
-      console.error('[useUniqueId] Error initializing collection:', err);
+
       setError(`Failed to initialize: ${(err as Error).message}`);
       return null;
     } finally {
@@ -347,11 +312,6 @@ export const useUniqueId = (): UseUniqueIdReturn => {
         TOKEN_PROGRAM_ID
       );
 
-      // console.log('[useUniqueId] Minting NFT with params:', {
-      //   mint: mintKeypair.publicKey.toBase58(),
-      //   user: userPublicKey.toBase58(),
-      //   tokenAccount: tokenAccount.toBase58()
-      // });
 
       const tx = await program.methods
         .mintNft()
@@ -378,10 +338,8 @@ export const useUniqueId = (): UseUniqueIdReturn => {
         txSignature: tx,
       };
 
-      console.log('[useUniqueId] NFT minted successfully:', nftData);
       return nftData;
     } catch (err) {
-      console.error('[useUniqueId] Error minting NFT:', err);
       setError(`Failed to mint NFT: ${(err as Error).message}`);
       return null;
     } finally {
@@ -391,11 +349,11 @@ export const useUniqueId = (): UseUniqueIdReturn => {
 
   // Mint multiple NFTs - ACTION only
   const mintMultipleNFTs = useCallback(async (count: number): Promise<MintedNFT[] | null> => {
-    console.log('[useUniqueId] === MINT MULTIPLE NFTS START ===');
+
     const mintedNFTs: MintedNFT[] = [];
 
     for (let i = 0; i < count; i++) {
-      console.log(`[useUniqueId] Minting NFT ${i + 1}/${count}`);
+
       const nft = await mintNFT();
       if (nft) {
         mintedNFTs.push(nft);
@@ -404,11 +362,6 @@ export const useUniqueId = (): UseUniqueIdReturn => {
         break;
       }
     }
-
-    console.log('[useUniqueId] Batch mint completed:', {
-      requested: count,
-      successful: mintedNFTs.length
-    });
 
     return mintedNFTs.length > 0 ? mintedNFTs : null;
   }, [mintNFT]);
@@ -470,7 +423,6 @@ export const useUniqueId = (): UseUniqueIdReturn => {
     return mapping?.uniqueId || null;
   }, [collection]);
 
-  console.log('[useUniqueId] === HOOK CALL END ===');
 
   return {
     // Store state (read-only)

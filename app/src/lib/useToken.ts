@@ -50,7 +50,6 @@ export interface UseTokenReturn {
 }
 
 export const useToken = (): UseTokenReturn => {
-    console.log('[useToken] === HOOK CALL START ===');
 
     // AppKit hooks (wallet info only)
     const { address, isConnected } = useAppKitAccount();
@@ -77,19 +76,12 @@ export const useToken = (): UseTokenReturn => {
     const hasInitializedProgram = useRef(false);
     const hasLoadedTokenData = useRef(false);
 
-    console.log('[useToken] Store state:', {
-        hasProgram: !!program,
-        userTokensCount: userTokens.length,
-        hasMintAuthPda: !!mintAuthPda,
-        loading,
-        hasError: !!error
-    });
 
     // Network change effect - resets loading flags only
     useEffect(() => {
         const unsubscribe = useNetworkStore.subscribe((state, prevState) => {
             if (state.currentNetwork !== prevState?.currentNetwork) {
-                console.log('[useToken] Network changed - resetting loading flags');
+                
                 hasInitializedProgram.current = false;
                 hasLoadedTokenData.current = false;
             }
@@ -99,8 +91,7 @@ export const useToken = (): UseTokenReturn => {
 
     // Program initialization effect - ONLY sets up program (no manual sync)
     useEffect(() => {
-        console.log('[useToken] === PROGRAM INIT EFFECT START ===');
-
+       
         const initializeProgram = async () => {
             if (hasInitializedProgram.current) {
                 return;
@@ -133,11 +124,6 @@ export const useToken = (): UseTokenReturn => {
                     CONFIG.TOKEN_PROGRAM_ID
                 );
 
-                // console.log('[useToken] Program initialized successfully:', {
-                //     programId: CONFIG.TOKEN_PROGRAM_ID.toBase58(),
-                //     mintAuthPda: derivedMintAuthPda.toBase58()
-                // });
-
                 // Update store
                 setProgram(newProgram);
                 setMintAuthPda(derivedMintAuthPda);
@@ -161,8 +147,6 @@ export const useToken = (): UseTokenReturn => {
 
     // Token data loading effect - ONLY loads data when program is ready
     useEffect(() => {
-        console.log('[useToken] === TOKEN DATA LOADING EFFECT START ===');
-
 
         const loadTokenData = async () => {
             if (hasLoadedTokenData.current) {
@@ -174,7 +158,7 @@ export const useToken = (): UseTokenReturn => {
             }
 
             try {
-                // console.log('[useToken] Loading token data...');
+                
                 hasLoadedTokenData.current = true;
                 setLoading(true);
 
@@ -216,7 +200,7 @@ export const useToken = (): UseTokenReturn => {
 
                 // Update store with results
                 setUserTokens(results);
-                // console.log('[useToken] Token data loaded successfully:', results.length, 'tokens');
+
 
             } catch (err) {
                 // console.error('[useToken] Error loading token data:', err);
@@ -232,22 +216,21 @@ export const useToken = (): UseTokenReturn => {
             loadTokenData();
         }
 
-        console.log('[useToken] === TOKEN DATA LOADING EFFECT END ===');
     }, [program, address, connection, mintAuthPda, setUserTokens, setLoading, setError]);
-    // [program, address, connection, mintAuthPda, setUserTokens, setLoading, setError, loading]);
+
     // Action functions
     const refreshAllData = useCallback(() => {
-        // console.log('[useToken] === REFRESH ALL DATA START ===');
+      
         if (program && address && connection && mintAuthPda) {
             hasLoadedTokenData.current = false;
             // The effect will automatically trigger
         }
-        // console.log('[useToken] === REFRESH ALL DATA END ===');
+
     }, [program, address, connection, mintAuthPda]);
 
     // Mint tokens - ACTION only, updates store automatically
     const mintTokens = useCallback(async (amount: BN, mintAddress?: PublicKey): Promise<string | null> => {
-        // console.log('[useToken] === MINT TOKENS START ===');
+
 
         if (!program || !address || !mintAuthPda) {
             setError('Program not initialized');
@@ -265,11 +248,6 @@ export const useToken = (): UseTokenReturn => {
         try {
             const userPublicKey = new PublicKey(address);
 
-            // console.log('[useToken] Minting tokens:', {
-            //     amount: amount.toString(),
-            //     mint: mintAddress.toBase58(),
-            //     caller: userPublicKey.toBase58(),
-            // });
 
             const tx = await program.methods
                 .mintTokens(amount)
@@ -279,14 +257,12 @@ export const useToken = (): UseTokenReturn => {
                 })
                 .rpc();
 
-            // console.log('[useToken] Tokens minted successfully:', tx);
-
             // Refresh store data after successful mint
             refreshAllData();
 
             return tx;
         } catch (err) {
-            // console.error('[useToken] Error minting tokens:', err);
+
             setError(`Failed to mint tokens: ${(err as Error).message}`);
             return null;
         } finally {
@@ -307,12 +283,11 @@ export const useToken = (): UseTokenReturn => {
             if (err instanceof TokenAccountNotFoundError || err instanceof TokenInvalidAccountOwnerError) {
                 return 0;
             }
-            // console.error('[useToken] Error getting balance:', err);
+
             return 0;
         }
     }, [connection, address]);
 
-    // console.log('[useToken] === HOOK CALL END ===');
 
     return {
         // Store state (read-only)
