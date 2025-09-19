@@ -84,13 +84,13 @@ The vault positions are already tied to NFT ownership rather than wallet address
 
 ```bash
 # Clone and build programs
-git clone <repository-url>
+git clone https://github.com/StRane/simple-defi-cross
 cd unique-id
 anchor build
 
 # Setup frontend
 cd ./app
-yarn install  # or pnpm install
+pnpm install  # or yarn install
 pnpm run dev   # or yarn dev
 ```
 
@@ -176,7 +176,7 @@ unique-id/
 
 ## Development Patterns
 
-This project demonstrates several advanced Solana development patterns:
+This project demonstrates several Solana development patterns:
 
 ### 1. Multi-Program Architecture
 Programs maintain independence while enabling composition through well-defined interfaces.
@@ -240,6 +240,4 @@ This project serves as both a working implementation and a learning resource for
 
 MIT License - see LICENSE file for details.
 
----
 
-*This project demonstrates advanced blockchain development patterns and serves as a foundation for exploring tradeable DeFi positions through NFT-based access control. It represents production-quality implementation suitable for further development into derivatives trading platforms.*
