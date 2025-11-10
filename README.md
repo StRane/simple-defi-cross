@@ -4,7 +4,10 @@
 
 ## Architectural Concept
 
-This project demonstrates binding vault positions to NFT ownership rather than wallet addresses. The core insight: if vault positions are tied to NFTs, those positions become tradeable through NFT transfers, creating a foundation for derivatives-like trading.
+Personal exploration of DeFi mechanics and multi-program architecture on Solana. 
+Built a proof-of-concept demonstrating NFT-gated transferable vault 
+positions - exploring how financial positions could become tradeable assets 
+through NFT ownership transfer.
 
 ### Current Implementation Status
 
@@ -39,7 +42,7 @@ unique_low (NFT Program) → simple_vault (Access Control) → test_token (Asset
 
 ### Technical Implementation
 
-**Multi-Program Coordination**: Independent programs communicating through well-defined PDA relationships without tight coupling. NFT ownership validation occurs through mint authority verification:
+**Multi-Program Coordination**: Independent programs communicating through defined PDA relationships without tight coupling. NFT ownership validation occurs through mint authority verification:
 
 ```rust
 constraint = user_nft_mint.mint_authority == COption::Some(vault.nft_collection_address)
@@ -55,7 +58,8 @@ seeds = [USER_INFO_SEED, user_nft_token.key().as_ref(), user_share_token.key().a
 
 ## Proof of Concept
 
-The vault positions are already tied to NFT ownership rather than wallet addresses. This architecture enables:
+Identified limitation in DeFi position liquidity and developed proof-of-concept 
+solution enabling position trading through NFT ownership mechanics. This architecture enables:
 
 - **Multiple Positions Per User**: Each NFT can have its own independent vault position
 - **Position Isolation**: Risk and rewards are isolated per NFT identity
