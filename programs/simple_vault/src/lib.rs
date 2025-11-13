@@ -86,13 +86,14 @@ pub mod simple_vault {
         let signer = &[&seeds[..]];
 
         // Update user info
-        let nft_user_info = &mut ctx.accounts.user_info;
-        nft_user_info.vault = vault.key();
-        nft_user_info.nft_mint = ctx.accounts.user_nft_mint.key();
-        nft_user_info.shares += shares_to_mint;
-        nft_user_info.locked_until = 0;
-        nft_user_info.lock_tier = LockTier::Unlocked;
-        nft_user_info.deposit_time = Clock::get()?.unix_timestamp;
+        let user_info = &mut ctx.accounts.user_info;
+        user_info.vault = vault.key();
+        user_info.deposit_amount += amount;
+        user_info.nft_mint = ctx.accounts.user_nft_mint.key();
+        user_info.shares += shares_to_mint;
+        user_info.locked_until = 0;
+        user_info.lock_tier = LockTier::Unlocked;
+        user_info.deposit_time = Clock::get()?.unix_timestamp;
 
         token::mint_to(
             CpiContext::new_with_signer(
@@ -113,10 +114,12 @@ pub mod simple_vault {
 
     pub fn lock(ctx: Context<Lock>, amount: u64, tier: u8) -> Result<()> {
         let vault = &mut ctx.accounts.vault;
-        let user_info = &mut ctx.accounts.nft_info;
+        let user_info = &mut ctx.accounts.user_info;
         let total_assets = ctx.accounts.vault_token_account.amount;
+        let current_time = Clock::get()?.unix_timestamp;
 
         let locktier = LockTier::try_from(tier)?;
+
         let cpi_accounts = Transfer {
             from: ctx.accounts.user_asset_token.to_account_info(),
             to: ctx.accounts.vault_token_account.to_account_info(),
@@ -124,32 +127,71 @@ pub mod simple_vault {
         };
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
         token::transfer(cpi_ctx, amount)?;
-        if user_info.shares > 0 {
-            require!(user_info.lock_tier == locktier, ErrorCode::TierMismatch);
-
-            let new_lock_end = Clock::get()?.unix_timestamp + get_lock_duration(&locktier);
-            user_info.locked_until = new_lock_end;
-        } else {
-            user_info.lock_tier = locktier;
-            user_info.locked_until = Clock::get()?.unix_timestamp + get_lock_duration(&locktier);
-            user_info.deposit_time = Clock::get()?.unix_timestamp;
-        }
 
         let shares_to_mint = if vault.total_shares == 0 {
             amount
+        } else if total_assets == 0 {
+            amount
         } else {
-            if total_assets == 0 {
-                amount // Fallback to 1:1 if somehow no assets
-            } else {
-                msg!("After token transfer");
-                msg!("Withdraw amount {:?}", amount);
-                msg!("Vault total shares {:?}", vault.total_shares);
-                msg!("Pre deposit assets{:?}", total_assets);
-
-                ((amount as u128) * (vault.total_shares as u128) / (total_assets as u128)) as u64
-            }
+            msg!(
+                "Share calculation: amount={}, total_shares={}, total_assets={}",
+                amount,
+                vault.total_shares,
+                total_assets
+            );
+            ((amount as u128) * (vault.total_shares as u128) / (total_assets as u128)) as u64
         };
 
+        if user_info.shares > 0 {
+            // Existing position
+            require!(user_info.lock_tier == locktier, ErrorCode::TierMismatch);
+            require!(
+                user_info.deposit_amount > 0,
+                ErrorCode::InvalidDepositAmount
+            );
+
+            let time_remaining = user_info.locked_until - current_time;
+
+            if time_remaining <= 0 {
+                // ✓ UNLOCKED: Use simple ratio-based duration
+                msg!("Position unlocked, calculating ratio-based duration");
+
+                let new_duration = calculate_ratio_based_duration(
+                    user_info.deposit_amount,
+                    amount,
+                    get_lock_duration(&locktier),
+                )?;
+
+                user_info.deposit_time = current_time;
+                user_info.locked_until = current_time + new_duration;
+
+                msg!("New lock duration: {} seconds (ratio-based)", new_duration);
+            } else {
+                msg!("Position still locked, calculating time-weighted extension");
+
+                let extension_time = calculate_extension(
+                    amount,
+                    user_info.deposit_amount,
+                    time_remaining,
+                    get_lock_duration(&locktier),
+                );
+
+                user_info.locked_until = user_info.locked_until + extension_time;
+
+                msg!("Extension: {} seconds (time-weighted)", extension_time);
+            }
+
+            user_info.deposit_amount += amount;
+        } else {
+            user_info.lock_tier = locktier;
+            user_info.deposit_time = current_time;
+            user_info.locked_until = current_time + get_lock_duration(&locktier);
+            user_info.deposit_amount = amount;
+
+            msg!("New position created with full duration");
+        }
+
+        // Update shares
         user_info.shares += shares_to_mint;
         vault.total_locked_shares += shares_to_mint;
         vault.total_shares += shares_to_mint;
@@ -252,7 +294,6 @@ pub mod simple_vault {
             ErrorCode::NotLockedForEarlyWithdrawal
         );
 
-
         // Apply penalty (e.g., 10%)
         let penalty_bps = 1000; // 10%
 
@@ -266,7 +307,6 @@ pub mod simple_vault {
             total_assets >= assets_to_withdraw,
             ErrorCode::InsufficientLiquidity
         );
-
 
         let penalty_amount = (assets_to_withdraw as u128 * penalty_bps as u128 / 10000) as u64;
         let withdraw_amount = assets_to_withdraw - penalty_amount;
@@ -301,41 +341,46 @@ pub fn calculate_extension(
 ) -> i64 {
     // 1. Deposit ratio
     let deposit_ratio = ((new_deposit as u128 * SCALE_U128) / existing_deposit as u128) as u64;
-    
+
     // 2. Time factor using sqrt approximation
     let time_ratio = ((time_remaining as u128 * SCALE_U128) / full_duration as u128) as u64;
-    
+
     if time_ratio == 0 {
         // Apply floor directly
-        let extension_ratio = (deposit_ratio as u128 * MIN_EXTENSION_RATIO as u128 / SCALE_U128) as u64;
+        let extension_ratio =
+            (deposit_ratio as u128 * MIN_EXTENSION_RATIO as u128 / SCALE_U128) as u64;
         return ((full_duration as u128 * extension_ratio as u128) / SCALE_U128) as i64;
     }
-    
+
     // sqrt(time_ratio) using native sqrt
     let sqrt_ratio = integer_sqrt((time_ratio as u128 * SCALE_U128) as u64);
-    
+
     // time_factor = sqrt(t) × (0.6 + 0.4×t)
     let linear_part = 600_000 + ((400_000u128 * time_ratio as u128) / SCALE_U128) as u64;
     let time_factor = ((sqrt_ratio as u128 * linear_part as u128) / SCALE_U128) as u64;
-    
+
     // 3. Extension ratio
     let extension_ratio = ((deposit_ratio as u128 * time_factor as u128) / SCALE_U128) as u64;
-    
+
     // 4. Apply floor and cap
     let floored = extension_ratio.max(MIN_EXTENSION_RATIO);
     let capped = floored.min(MAX_EXTENSION_RATIO);
-    
+
     // 5. Final extension
     ((full_duration as u128 * capped as u128) / SCALE_U128) as i64
 }
 
 fn integer_sqrt(n: u64) -> u64 {
-    if n == 0 { return 0; }
-    if n < 4 { return 1; }
-    
+    if n == 0 {
+        return 0;
+    }
+    if n < 4 {
+        return 1;
+    }
+
     let mut x = n / 2;
     let mut y = (x + n / x) / 2;
-    
+
     while y < x {
         x = y;
         y = (x + n / x) / 2;
@@ -433,6 +478,7 @@ impl TryFrom<u8> for LockTier {
 pub struct UserInfo {
     pub vault: Pubkey,
     pub nft_mint: Pubkey,
+    pub deposit_amount: u64,
     pub shares: u64,
     pub locked_until: i64,
     pub lock_tier: LockTier,
@@ -576,7 +622,7 @@ pub struct Lock<'info> {
         seeds = [USER_INFO_SEED, user_nft_mint.key().as_ref(), user_share_token.key().as_ref()],
         bump
     )]
-    pub nft_info: Account<'info, UserInfo>,
+    pub user_info: Account<'info, UserInfo>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
@@ -664,6 +710,27 @@ pub fn get_lock_duration(tier: &LockTier) -> i64 {
     }
 }
 
+pub fn calculate_ratio_based_duration(
+    existing_amount: u64,
+    new_amount: u64,
+    full_duration: i64,
+) -> Result<i64> {
+    require!(existing_amount > 0, ErrorCode::InvalidDepositAmount);
+
+    // Calculate ratio with scaling for precision
+    let ratio = ((new_amount as u128 * SCALE_U128) / existing_amount as u128) as u64;
+
+    // Calculate duration
+    let duration = ((full_duration as u128 * ratio as u128) / SCALE_U128) as i64;
+
+    // Apply bounds: min 1 day, max full duration
+    let bounded_duration = duration
+        .max(24 * 60 * 60) // 1 day minimum
+        .min(full_duration); // cap at full duration
+
+    Ok(bounded_duration)
+}
+
 #[derive(Accounts)]
 pub struct CloseVault<'info> {
     #[account(
@@ -705,8 +772,12 @@ pub enum ErrorCode {
 
     #[msg("Patiance bears the tastiest fruits")]
     StillLocked,
+
     #[msg("You can withdraw without penalty")]
     NotLockedForEarlyWithdrawal,
+
+    #[msg("Insufficent deposit amount")]
+    InvalidDepositAmount,
 }
 
 #[event]
@@ -722,11 +793,132 @@ pub struct WithdrawEvent {
     pub amount: u64,
 }
 
-
 #[event]
 pub struct EarlyWithdrawal {
     pub user: Pubkey,
     pub amount: u64,
     pub penalty: u64,
     pub time_remaining: i64,
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ratio_based_duration_simple() {
+        let existing_amount = 100_000_000; // 100 tokens
+        let new_amount = 50_000_000;       // 50 tokens
+        let full_duration = 30 * 24 * 60 * 60; // 30 days
+
+        let result = calculate_ratio_based_duration(
+            existing_amount,
+            new_amount,
+            full_duration,
+        ).unwrap();
+
+        // Expected: (50 / 100) * 30 days = 15 days
+        let expected = (full_duration as f64 * 0.5) as i64;
+        let tolerance = 60; // 1 minute tolerance for rounding
+
+        assert!(
+            (result - expected).abs() <= tolerance,
+            "Expected ~{}, got {}",
+            expected,
+            result
+        );
+    }
+
+    #[test]
+    fn test_ratio_based_duration_equal_amounts() {
+        let existing_amount = 100_000_000;
+        let new_amount = 100_000_000;
+        let full_duration = 30 * 24 * 60 * 60;
+
+        let result = calculate_ratio_based_duration(
+            existing_amount,
+            new_amount,
+            full_duration,
+        ).unwrap();
+
+        // Should equal full duration (ratio = 1.0)
+        assert_eq!(result, full_duration);
+    }
+
+    #[test]
+    fn test_ratio_based_duration_tiny_amount() {
+        let existing_amount = 1_000_000_000; // 1000 tokens
+        let new_amount = 1_000_000;          // 1 token
+        let full_duration = 30 * 24 * 60 * 60;
+
+        let result = calculate_ratio_based_duration(
+            existing_amount,
+            new_amount,
+            full_duration,
+        ).unwrap();
+
+        // Should hit minimum floor (1 day)
+        let min_duration = 24 * 60 * 60;
+        assert_eq!(result, min_duration);
+    }
+
+    #[test]
+    fn test_ratio_based_duration_huge_amount() {
+        let existing_amount = 10_000_000;    // 10 tokens
+        let new_amount = 1_000_000_000;      // 1000 tokens
+        let full_duration = 30 * 24 * 60 * 60;
+
+        let result = calculate_ratio_based_duration(
+            existing_amount,
+            new_amount,
+            full_duration,
+        ).unwrap();
+
+        // Should hit maximum cap (full duration)
+        assert_eq!(result, full_duration);
+    }
+
+    #[test]
+    #[should_panic(expected = "Insufficent deposit amount")]
+    fn test_ratio_based_duration_zero_existing() {
+        let existing_amount = 0;
+        let new_amount = 50_000_000;
+        let full_duration = 30 * 24 * 60 * 60;
+
+        calculate_ratio_based_duration(
+            existing_amount,
+            new_amount,
+            full_duration,
+        ).unwrap();
+    }
+
+    #[test]
+    fn test_calculate_extension_basic() {
+        let new_deposit = 50_000_000;
+        let existing_deposit = 100_000_000;
+        let time_remaining = 15 * 24 * 60 * 60; // 15 days
+        let full_duration = 30 * 24 * 60 * 60; // 30 days
+
+        let result = calculate_extension(
+            new_deposit,
+            existing_deposit,
+            time_remaining,
+            full_duration,
+        );
+
+        // Should get some extension based on the formula
+        assert!(result > 0, "Extension should be positive");
+        assert!(result <= full_duration, "Extension shouldn't exceed full duration");
+        
+        println!("Extension calculated: {} seconds ({} days)", result, result / 86400);
+    }
+
+    #[test]
+    fn test_get_lock_duration() {
+        assert_eq!(get_lock_duration(&LockTier::Unlocked), 0);
+        assert_eq!(get_lock_duration(&LockTier::Short), 30 * 24 * 60 * 60);
+        assert_eq!(get_lock_duration(&LockTier::Long), 6 * 30 * 24 * 60 * 60);
+        assert_eq!(get_lock_duration(&LockTier::VeryLong), 12 * 30 * 24 * 60 * 60);
+    }
 }

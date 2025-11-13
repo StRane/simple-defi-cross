@@ -25,4 +25,6 @@ wormhole-supported-chains = { workspace = true }
 solana-program = { workspace = true }
 anchor-lang-idl = { workspace = true }
 unique-low = { path = "../unique-low", features = ["cpi"] }
+solana-program-test = { workspace = true }
+solana-sdk = { workspace = true }
 

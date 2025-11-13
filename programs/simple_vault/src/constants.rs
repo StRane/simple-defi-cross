@@ -20,3 +20,4 @@ pub const SECONDS_PER_DAY: i64 = 86400;
 pub const SECONDS_PER_YEAR: i64 = 365 * 86400;
 
 pub const MIN_HOLD_TIME: i64 = 7 * 86400;
+pub const MIN_LOCK_DURATION: i64 = 24 * 60 * 60;
