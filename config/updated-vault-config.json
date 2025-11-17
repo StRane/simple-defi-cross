@@ -1,23 +1,23 @@
 {
   "programs": {
     "testToken": "BSCgQLPHjjvoH6qbG59dyxUTfcK6jAqFDdPk6MNN7sEz",
-    "vault": "4g14aJ5JEN3og3RTjrMJFuTJbYFqQ8GrcyuoS36xCnQL",
+    "vault": "DGXrmuhPvYJEWytSpZPB3PCA2zNvSsNvctkAeS924473",
     "uniqueId": "5XdsDEXPiHndfBkrvJKjsFZy3Zf95bUZLRZQvJ4W6Bpa"
   },
   "infrastructure": {
-    "nftCollection": "Ap7WzrvZU6HauqP9TCdNkpvQamQ5tBkZGyaFZbGgRm87",
+    "nftCollection": "2okdWdXycjkKeC6aE1UTyUmxZndRR45dzfWGA9xsBTYz",
     "mintAuthority": "4BFqXxQTPhL2MY84mWcaZNhN8gWmxVpa6PTDkU2wwCA2"
   },
   "useVaultConfig": {
-    "PROGRAM_ID": "4g14aJ5JEN3og3RTjrMJFuTJbYFqQ8GrcyuoS36xCnQL",
+    "PROGRAM_ID": "DGXrmuhPvYJEWytSpZPB3PCA2zNvSsNvctkAeS924473",
     "VAULT_SEED": "vault_v2",
     "USER_SHARES_SEED": "user_shares_v2",
     "USER_INFO_SEED": "user_info_v2",
-    "COLLECTION_PDA": "Ap7WzrvZU6HauqP9TCdNkpvQamQ5tBkZGyaFZbGgRm87",
-    "VAULT_ASSET_MINT": "2dxwdENVaN3sq6F6vRdeXjAGjSFyu8YaUEABN4KdrCjq",
-    "VAULT_PDA": "DH8QTiKfGjAYw87Ub81AasS24NLZaBJhMf5bCgN8dtBq",
-    "SHARE_MINT": "EVAHYMMnEV468dvyDZiznZJn8h5XLbLs2eRHqqB1aLY6",
-    "VAULT_TOKEN_ACCOUNT": "5zW8CLEST28Z1zG7uiDd2TRmaE6cNURRuzCcW3buQmsE",
+    "COLLECTION_PDA": "2okdWdXycjkKeC6aE1UTyUmxZndRR45dzfWGA9xsBTYz",
+    "VAULT_ASSET_MINT": "DjgG2FYvDLnpu7Br5wcHCuYapjXdZAi29qEBxghBgw6P",
+    "VAULT_PDA": "7pngwwvzETyc5xrBveeU2NhnBq2zrdoDtPdtbdZhtAoY",
+    "SHARE_MINT": "FnMPfhmtZ8LTR8gbWbR4rUmY1tdLiUm4apwfh1efXihA",
+    "VAULT_TOKEN_ACCOUNT": "GqRBAP8Du36FayCB9ph9HSfjmbb7ffqdG2mg2HRsZGU1",
     "derivationPatterns": {
       "nftUserInfoSeeds": [
         "vault_v2",
@@ -32,10 +32,10 @@
     }
   },
   "vault": {
-    "assetMint": "2dxwdENVaN3sq6F6vRdeXjAGjSFyu8YaUEABN4KdrCjq",
-    "vaultPda": "DH8QTiKfGjAYw87Ub81AasS24NLZaBJhMf5bCgN8dtBq",
-    "shareMint": "EVAHYMMnEV468dvyDZiznZJn8h5XLbLs2eRHqqB1aLY6",
-    "vaultTokenAccount": "5zW8CLEST28Z1zG7uiDd2TRmaE6cNURRuzCcW3buQmsE"
+    "assetMint": "DjgG2FYvDLnpu7Br5wcHCuYapjXdZAi29qEBxghBgw6P",
+    "vaultPda": "7pngwwvzETyc5xrBveeU2NhnBq2zrdoDtPdtbdZhtAoY",
+    "shareMint": "FnMPfhmtZ8LTR8gbWbR4rUmY1tdLiUm4apwfh1efXihA",
+    "vaultTokenAccount": "GqRBAP8Du36FayCB9ph9HSfjmbb7ffqdG2mg2HRsZGU1"
   },
   "oldVault": {
     "vaultPda": "Cs6Vz6BNq6HHViusWzVzK9cg1u5cCvdW3nSvDCCZJd4m",
@@ -44,7 +44,7 @@
     "note": "Old vault with wrong asset mint - now replaced"
   },
   "deployment": {
-    "deployedAt": "2025-09-19T13:09:17.975Z",
+    "deployedAt": "2025-11-16T09:40:06.631Z",
     "deployerWallet": "GXHdciYz5RQS5oGyF7JWF61sxFNuM4RxXw2s2ZX25cVd",
     "network": "devnet"
   }

@@ -9,18 +9,17 @@ import { BN } from '@coral-xyz/anchor';
 import { CONFIG, VaultUtils } from '@/config/programs';
 
 export interface VaultData {
-    owner: PublicKey;
-    assetMint: PublicKey;
-    shareMint: PublicKey;
-    nftCollectionAddress: PublicKey;
-    totalBorrowed: BN;
-    borrowIndex: BN;   
-    borrowRate: BN;    
-    lastUpdateTime: BN; 
-    reserveFactor: BN;  
-    totalReserves: BN;  
-    totalShares: BN;     
-    bump: number;        
+  owner: PublicKey;
+  assetMint: PublicKey;
+  shareMint: PublicKey;
+  nftCollectionAddress: PublicKey;
+  lastUpdateTime: BN;
+  reserveFactor: BN;
+  totalReserves: BN;
+  totalShares: BN;
+  totalLockedShares: BN;
+  totalUnlockedShares: BN;
+  bump: number;
 }
 
 export interface UserPosition {

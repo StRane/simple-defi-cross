@@ -14,7 +14,7 @@ use solana_program::{
     program::invoke_signed,
 };
 
-declare_id!("3tjocQ6BpRfAniWTVeC3fp7UrpGeaBbBzBZkA4x5eVVF");
+declare_id!("ACM92DSXA9ebVyxQpZf4EKDvuEgXsiAkD6Us8kTcGVh7");
 
 // ================================
 // CONSTANTS
@@ -409,6 +409,7 @@ pub enum WormholeInstruction {
 pub mod unique_low {
     use super::*;
 
+    /// CHECK:
     pub fn initialize(
         ctx: Context<Initialize>,
         name: String,
@@ -435,6 +436,7 @@ pub mod unique_low {
         let chain_id = 1u64;
         let unique_id = generate_unique_id(chain_id, &ctx.accounts.user.key(), user_state.nonce)?;
 
+        /// CHECK:
         // Check if unique ID already exists
         require!(
             !collection.unique_id_exists(unique_id),

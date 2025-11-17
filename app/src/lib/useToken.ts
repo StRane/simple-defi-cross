@@ -13,7 +13,7 @@ import {
 } from '@solana/spl-token';
 import { AnchorWallet } from '@solana/wallet-adapter-react';
 
-import type { TestToken } from '@/../../target/types/test_token';
+import type { TestToken } from '@/types/test_token';
 import IDL from '@/../../target/idl/test_token.json';
 
 // Import stores

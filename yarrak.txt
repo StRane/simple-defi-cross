@@ -22,3 +22,52 @@ Mint Authority PDA: AjryaGMqQ6ZHPr7utSumMubxFLkk5aFGTVFMNQqZ1sCh
 Mint Authority Bump: 254
 ✅ Program already initialized!
 Existing bump: 254
+
+🎨 Initializing NFT Collection...
+
+📋 Configuration:
+NFT Program ID: ACM92DSXA9ebVyxQpZf4EKDvuEgXsiAkD6Us8kTcGVh7
+Wallet: GXHdciYz5RQS5oGyF7JWF61sxFNuM4RxXw2s2ZX25cVd
+Collection PDA: 2okdWdXycjkKeC6aE1UTyUmxZndRR45dzfWGA9xsBTYz
+Collection Bump: 249
+
+🔍 Checking if collection already exists...
+Collection not initialized yet, proceeding with initialization...
+Wallet balance: 31.822344636 SOL
+
+🔧 Initializing NFT collection...
+✅ NFT Collection initialized successfully!
+📝 Transaction signature: 51rog2G3jCir18gN8CVCnUu675P9Cb2hLkDk3gfGk7AfBropA6fk3XDNjtSpqxpJFGQud71VGVCWdJCZtQSZ55m4
+
+✅ Verifying collection initialization...
+📊 Collection Verification:
+  Name: Vault Access IDs
+  Symbol: IDx
+  Base URI: https://google.com/metadata/
+  Total Supply: 0
+  Authority: GXHdciYz5RQS5oGyF7JWF61sxFNuM4RxXw2s2ZX25cVd
+  Authority matches wallet: ✅ YES
+  Wormhole Program: worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth
+  Bump: 249
+  Collection mappings initialized: {
+  uniqueIdToTokenId: 0,
+  tokenIdToUniqueId: 0,
+  mintToUniqueId: 0,
+  crossChainUniqueIds: 0
+}
+
+🔗 Explorer Links:
+Collection Account: https://explorer.solana.com/address/2okdWdXycjkKeC6aE1UTyUmxZndRR45dzfWGA9xsBTYz?cluster=testnet
+Transaction: https://explorer.solana.com/tx/51rog2G3jCir18gN8CVCnUu675P9Cb2hLkDk3gfGk7AfBropA6fk3XDNjtSpqxpJFGQud71VGVCWdJCZtQSZ55m4?cluster=testnet
+NFT Program: https://explorer.solana.com/address/ACM92DSXA9ebVyxQpZf4EKDvuEgXsiAkD6Us8kTcGVh7?cluster=testnet
+
+🎉 SUCCESS! NFT Collection is ready for vault initialization!
+💡 Collection PDA for vault init: 2okdWdXycjkKeC6aE1UTyUmxZndRR45dzfWGA9xsBTYz
+
+✅ Collection initialization completed!
+🎯 Collection PDA: 2okdWdXycjkKeC6aE1UTyUmxZndRR45dzfWGA9xsBTYz
+
+💡 Next steps:
+   1. Update initVault.ts with your asset mint: DjgG2FYvDLnpu7Br5wcHCuYapjXdZAi29qEBxghBgw6P
+   2. Update initVault.ts collection PDA: 2okdWdXycjkKeC6aE1UTyUmxZndRR45dzfWGA9xsBTYz
+   3. Run vault initialization

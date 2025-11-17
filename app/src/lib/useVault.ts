@@ -7,7 +7,7 @@ import {
 } from '@solana/web3.js';
 import { AnchorWallet } from '@solana/wallet-adapter-react';
 
-import type { SimpleVault } from '@/../../target/types/simple_vault';
+import type { SimpleVault } from '@/types/simple_vault';
 import IDL from '@/../../target/idl/simple_vault.json';
 
 // Import stores
@@ -15,6 +15,7 @@ import { useNetworkStore } from '@/store/networkStore';
 import { useVaultStore, type VaultData, type UserPosition } from '@/store/vaultStore';
 
 // Import selection context
+import { getAssociatedTokenAddress } from "@solana/spl-token";
 import { useTokenSelection, useNFTSelection } from '@/context/SelectionContext';
 
 // Import new config structure
@@ -53,8 +54,9 @@ export interface UseVaultReturn {
     // Actions only (no direct data fetching in components)
     deposit: (amount: BN, assetMint: PublicKey, userNftMint: PublicKey) => Promise<string | null>;
     withdraw: (shares: BN, assetMint: PublicKey, userNftMint: PublicKey) => Promise<string | null>;
+    lock: (amount: BN, assetMint: PublicKey, userNftMint: PublicKey, tier: number) => Promise<string | null>;
     transactionState: TransactionState;
-    
+
     // Store actions
     refreshVaultData: () => void;
     refreshUserPosition: () => void;
@@ -143,7 +145,7 @@ export const useVault = (): UseVaultReturn => {
 
     // Program initialization effect - ONLY sets up program
     useEffect(() => {
- 
+
         const initializeProgram = async () => {
             if (hasInitializedProgram.current) {
                 return;
@@ -200,10 +202,10 @@ export const useVault = (): UseVaultReturn => {
                 setLoading(true);
 
                 // Use derived vault PDA instead of hardcoded
-               
+
                 const [vaultPda] = VaultUtils.getVaultPDA();
 
-               
+
                 const vaultAccount = await program.account.vault.fetchNullable(vaultPda);
 
                 if (vaultAccount) {
@@ -244,7 +246,7 @@ export const useVault = (): UseVaultReturn => {
                 setUserPositionLoading(true);
 
                 const userPublicKey = new PublicKey(address);
-                
+
                 // Use derived accounts from VaultUtils
                 const derivedAccounts = VaultUtils.getDerivedAccountsForUser(userPublicKey, nftMint);
 
@@ -260,7 +262,8 @@ export const useVault = (): UseVaultReturn => {
                 if (userInfo) {
                     // Calculate deposit amount based on current vault state
                     let depositAmount = Number(userInfo.shares);
-                    if (vault.totalShares > 0) {
+                    
+                    if (vault.totalShares.toNumber() > 0) {
                         try {
                             const totalAssets = await connection.getTokenAccountBalance(
                                 derivedAccounts.vaultTokenAccount
@@ -280,7 +283,7 @@ export const useVault = (): UseVaultReturn => {
                         nftMint: nftMint,
                         depositAmount,
                         shareAmount: Number(userInfo.shares),
-                        timestamp: userInfo.lastUpdate * 1000
+                        timestamp: userInfo.depositTime.toNumber() * 1000
                     };
 
                     updateUserPositionForNFT(nftMint, currentPosition);
@@ -310,21 +313,21 @@ export const useVault = (): UseVaultReturn => {
     const refreshVaultData = useCallback(() => {
         if (program && address && connection) {
             hasLoadedVaultData.current = false;
-            
+
         }
     }, [program, address, connection]);
 
     const refreshUserPosition = useCallback(() => {
         if (selectedNFT && vault && program && address && connection) {
             isLoadingUserPosition.current = false;
-            
+
         }
     }, [selectedNFT, vault, program, address, connection]);
 
     const refreshAllData = useCallback(() => {
         hasLoadedVaultData.current = false;
         isLoadingUserPosition.current = false;
-        
+
     }, []);
 
 
@@ -560,7 +563,7 @@ export const useVault = (): UseVaultReturn => {
             // Use VaultUtils to derive all accounts - same as deposit!
             const accounts = VaultUtils.getDerivedAccountsForUser(userWallet, userNftMint);
 
-            
+
             // Validate user has enough shares
             try {
                 const shareTokenInfo = await connection.getTokenAccountBalance(accounts.userShareTokenAccount);
@@ -644,6 +647,97 @@ export const useVault = (): UseVaultReturn => {
     }, [program, address, connection, selectedTokenAccount, setError, setLoading, refreshAllData]);
 
 
+    const lock = useCallback(
+        async (
+            amount: BN,
+            assetMint: PublicKey,
+            userNftMint: PublicKey,
+            tier: number
+        ): Promise<string | null> => {
+            if (!program || !address || !connection) {
+                setError("Program not initialized");
+                return null;
+            }
+
+            try {
+                setTransactionState({
+                    status: TransactionStatus.BUILDING,
+                    signature: null,
+                    error: null,
+                    message: "Building lock transaction...",
+                });
+
+                const userPublicKey = new PublicKey(address);
+
+                // Derive user's NFT token account
+                const userNftTokenAccount = await getAssociatedTokenAddress(
+                    userNftMint,
+                    userPublicKey
+                );
+
+
+
+                setTransactionState({
+                    status: TransactionStatus.SIGNING,
+                    signature: null,
+                    error: null,
+                    message: "Please sign the transaction in your wallet...",
+                });
+
+
+                const [vaultPda] = VaultUtils.getVaultPDA();
+
+                const vaultTokenAccount = VaultUtils.getVaultTokenAccount();
+
+                const tx = await program.methods
+                    .lock(amount, tier)
+                    .accounts({
+                        user: userPublicKey,
+                        vault: vaultPda,
+                        nftCollection: CONFIG.COLLECTION_PDA,
+                        userNftToken: userNftTokenAccount,
+                        userNftMint: userNftMint,
+                        assetMint: assetMint,
+                        vaultTokenAccount: vaultTokenAccount,
+                        shareMint: CONFIG.SHARE_MINT,
+                    })
+                    .rpc();
+
+                setTransactionState({
+                    status: TransactionStatus.CONFIRMING,
+                    signature: tx,
+                    error: null,
+                    message: "Confirming transaction...",
+                });
+
+                await connection.confirmTransaction(tx);
+
+                setTransactionState({
+                    status: TransactionStatus.SUCCESS,
+                    signature: tx,
+                    error: null,
+                    message: "Lock successful!",
+                });
+
+                // Refresh vault and user data
+                const vaultStore = useVaultStore.getState();
+                await vaultStore.reset;
+
+                return tx;
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : "Lock failed";
+                setTransactionState({
+                    status: TransactionStatus.FAILED,
+                    signature: null,
+                    error: errorMessage,
+                    message: errorMessage,
+                });
+                setError(errorMessage);
+                return null;
+            }
+        },
+        [program, address, connection]
+    );
     return {
         // Store state (read-only)
         program,
@@ -678,6 +772,7 @@ export const useVault = (): UseVaultReturn => {
         // Actions only
         deposit,
         withdraw,
+        lock,
         refreshVaultData,
         refreshUserPosition,
         refreshAllData,

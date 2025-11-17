@@ -42,7 +42,7 @@ export const CONFIG = {
         USER_INFO: Buffer.from("user_info_" + requireEnv('VITE_VAULT_VERSION')),
         USER_SHARES: Buffer.from("user_shares_" + requireEnv('VITE_VAULT_VERSION')),
         COLLECTION: Buffer.from("collection_" + requireEnv('VITE_VAULT_VERSION')),
-        USER_STATE: Buffer.from("user_state_"+ requireEnv('VITE_VAULT_VERSION')),
+        USER_STATE: Buffer.from("user_state_" + requireEnv('VITE_VAULT_VERSION')),
     },
 
     TEST_TOKEN_MINTS: [
@@ -137,6 +137,13 @@ export class VaultUtils {
         const vaultTokenAccount = this.getVaultTokenAccount();
 
         const [userInfoPda, userInfoBump] = this.getUserInfoPDA(nftMint, userShareTokenAccount);
+
+        console.log("📍 DERIVED ACCOUNTS:");
+        console.log("  vaultPda:", vaultPda.toBase58());
+        console.log("  collectionPda:", collectionPda.toBase58());
+        console.log("  userSharesPda:", userSharesPda.toBase58());
+        console.log("  userInfoPda:", userInfoPda.toBase58());
+        console.log("=============================\n");
 
         return {
             // PDAs with bumps

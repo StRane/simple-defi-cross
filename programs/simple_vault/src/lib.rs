@@ -7,7 +7,7 @@ pub mod constants;
 use constants::*;
 use std::convert::TryFrom;
 
-declare_id!("4g14aJ5JEN3og3RTjrMJFuTJbYFqQ8GrcyuoS36xCnQL");
+declare_id!("DGXrmuhPvYJEWytSpZPB3PCA2zNvSsNvctkAeS924473");
 
 #[program]
 pub mod simple_vault {
@@ -24,15 +24,12 @@ pub mod simple_vault {
         vault.asset_mint = ctx.accounts.asset_mint.key();
         vault.share_mint = ctx.accounts.share_mint.key();
         //-----------------
-        vault.total_borrowed = 0;
-        vault.borrow_index = INITIAL_BORROW_INDEX;
-        vault.borrow_rate = BASE_RATE;
+
         vault.last_update_time = clock.unix_timestamp;
         vault.total_reserves = 0;
         vault.total_shares = 0;
         vault.total_unlocked_shares = 0;
         vault.total_locked_shares = 0;
-        vault.yield_multiplier = LOCKED_YIELD_MULTIPLIER;
         //-----------------
         vault.nft_collection_address = nft_collection_address; // collection PDA
         vault.bump = ctx.bumps.vault;
@@ -42,15 +39,15 @@ pub mod simple_vault {
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
         let vault = &mut ctx.accounts.vault;
         let total_assets = ctx.accounts.vault_token_account.amount;
+
         msg!("Before token transfer");
-        msg!("Withdraw amount {:?}", amount);
+        msg!("Deposit amount {:?}", amount);
         msg!("Vault total shares {:?}", vault.total_shares);
         msg!(
             "Pre deposit assets{:?}",
             ctx.accounts.vault_token_account.amount
         );
 
-        // Transfer assets from user to vault first
         let cpi_accounts = Transfer {
             from: ctx.accounts.user_asset_token.to_account_info(),
             to: ctx.accounts.vault_token_account.to_account_info(),
@@ -59,19 +56,32 @@ pub mod simple_vault {
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
         token::transfer(cpi_ctx, amount)?;
 
-        // Standard ERC4626 share calculation
+        let fee_bps = get_deposit_fee_bps(&LockTier::Unlocked);
+        let fee_amount = (amount as u128 * fee_bps as u128) / 10000;
+        let net_deposit = amount - fee_amount as u64;
+
+        vault.total_reserves += fee_amount as u64;
+
+        msg!(
+            "Deposit fee: {} bps, Fee amount: {}, Net deposit: {}",
+            fee_bps,
+            fee_amount,
+            net_deposit
+        );
+
         let shares_to_mint = if vault.total_shares == 0 {
-            amount
+            net_deposit
         } else {
             if total_assets == 0 {
-                amount // Fallback to 1:1 if somehow no assets
+                net_deposit
             } else {
                 msg!("After token transfer");
-                msg!("Withdraw amount {:?}", amount);
+                msg!("Net deposit amount {:?}", net_deposit);
                 msg!("Vault total shares {:?}", vault.total_shares);
                 msg!("Pre deposit assets{:?}", total_assets);
 
-                ((amount as u128) * (vault.total_shares as u128) / (total_assets as u128)) as u64
+                ((net_deposit as u128) * (vault.total_shares as u128) / (total_assets as u128))
+                    as u64
             }
         };
 
@@ -88,7 +98,7 @@ pub mod simple_vault {
         // Update user info
         let user_info = &mut ctx.accounts.user_info;
         user_info.vault = vault.key();
-        user_info.deposit_amount += amount;
+        user_info.deposit_amount += net_deposit;
         user_info.nft_mint = ctx.accounts.user_nft_mint.key();
         user_info.shares += shares_to_mint;
         user_info.locked_until = 0;
@@ -109,6 +119,13 @@ pub mod simple_vault {
         )?;
 
         vault.total_shares += shares_to_mint;
+
+        msg!(
+            "Shares minted: {}, Total vault shares: {}",
+            shares_to_mint,
+            vault.total_shares
+        );
+
         Ok(())
     }
 
@@ -120,6 +137,20 @@ pub mod simple_vault {
 
         let locktier = LockTier::try_from(tier)?;
 
+        let fee_bps = get_deposit_fee_bps(&locktier);
+        let fee_amount = (amount as u128 * fee_bps as u128) / 10000;
+        let net_deposit = amount - fee_amount as u64;
+
+        vault.total_reserves += fee_amount as u64;
+
+        msg!(
+            "Lock tier: {:?}, Fee: {} bps, Fee amount: {}, Net deposit: {}",
+            tier,
+            fee_bps,
+            fee_amount,
+            net_deposit
+        );
+
         let cpi_accounts = Transfer {
             from: ctx.accounts.user_asset_token.to_account_info(),
             to: ctx.accounts.vault_token_account.to_account_info(),
@@ -129,21 +160,20 @@ pub mod simple_vault {
         token::transfer(cpi_ctx, amount)?;
 
         let shares_to_mint = if vault.total_shares == 0 {
-            amount
+            net_deposit
         } else if total_assets == 0 {
-            amount
+            net_deposit
         } else {
             msg!(
-                "Share calculation: amount={}, total_shares={}, total_assets={}",
-                amount,
+                "Share calculation: net_deposit={}, total_shares={}, total_assets={}",
+                net_deposit,
                 vault.total_shares,
                 total_assets
             );
-            ((amount as u128) * (vault.total_shares as u128) / (total_assets as u128)) as u64
+            ((net_deposit as u128) * (vault.total_shares as u128) / (total_assets as u128)) as u64
         };
 
         if user_info.shares > 0 {
-            // Existing position
             require!(user_info.lock_tier == locktier, ErrorCode::TierMismatch);
             require!(
                 user_info.deposit_amount > 0,
@@ -153,12 +183,11 @@ pub mod simple_vault {
             let time_remaining = user_info.locked_until - current_time;
 
             if time_remaining <= 0 {
-                // ✓ UNLOCKED: Use simple ratio-based duration
                 msg!("Position unlocked, calculating ratio-based duration");
 
                 let new_duration = calculate_ratio_based_duration(
                     user_info.deposit_amount,
-                    amount,
+                    net_deposit,
                     get_lock_duration(&locktier),
                 )?;
 
@@ -170,7 +199,7 @@ pub mod simple_vault {
                 msg!("Position still locked, calculating time-weighted extension");
 
                 let extension_time = calculate_extension(
-                    amount,
+                    net_deposit,
                     user_info.deposit_amount,
                     time_remaining,
                     get_lock_duration(&locktier),
@@ -181,20 +210,26 @@ pub mod simple_vault {
                 msg!("Extension: {} seconds (time-weighted)", extension_time);
             }
 
-            user_info.deposit_amount += amount;
+            user_info.deposit_amount += net_deposit;
         } else {
             user_info.lock_tier = locktier;
             user_info.deposit_time = current_time;
             user_info.locked_until = current_time + get_lock_duration(&locktier);
-            user_info.deposit_amount = amount;
+            user_info.deposit_amount = net_deposit;
 
             msg!("New position created with full duration");
         }
 
-        // Update shares
         user_info.shares += shares_to_mint;
         vault.total_locked_shares += shares_to_mint;
         vault.total_shares += shares_to_mint;
+
+        msg!(
+            "Shares minted: {}, User total shares: {}, Vault total shares: {}",
+            shares_to_mint,
+            user_info.shares,
+            vault.total_shares
+        );
 
         Ok(())
     }
@@ -213,10 +248,8 @@ pub mod simple_vault {
 
         let vault = &mut ctx.accounts.vault;
 
-        // Get vault balance
         let total_assets = ctx.accounts.vault_token_account.amount;
 
-        // Calculate withdrawal
         let assets_to_withdraw =
             ((shares as u128) * (total_assets as u128) / (vault.total_shares as u128)) as u64;
 
@@ -225,7 +258,6 @@ pub mod simple_vault {
             ErrorCode::InsufficientLiquidity
         );
 
-        // Burn shares first
         let burn_accounts = Burn {
             mint: ctx.accounts.share_mint.to_account_info(),
             from: ctx.accounts.user_share_token.to_account_info(),
@@ -247,11 +279,9 @@ pub mod simple_vault {
         );
         token::burn(burn_ctx, shares)?;
 
-        // Update accounting
         user_info.shares -= shares;
         vault.total_shares -= shares;
 
-        // Transfer assets to user
         let asset_mint_key = ctx.accounts.asset_mint.key();
         let vault_seeds: &[&[u8]] = &[
             VAULT_SEED.as_ref(),
@@ -294,12 +324,10 @@ pub mod simple_vault {
             ErrorCode::NotLockedForEarlyWithdrawal
         );
 
-        // Apply penalty (e.g., 10%)
         let penalty_bps = 1000; // 10%
 
         let total_assets = ctx.accounts.vault_token_account.amount;
 
-        // Calculate withdrawal
         let assets_to_withdraw =
             ((shares as u128) * (total_assets as u128) / (vault.total_shares as u128)) as u64;
 
@@ -339,35 +367,36 @@ pub fn calculate_extension(
     time_remaining: i64,
     full_duration: i64,
 ) -> i64 {
-    // 1. Deposit ratio
     let deposit_ratio = ((new_deposit as u128 * SCALE_U128) / existing_deposit as u128) as u64;
 
-    // 2. Time factor using sqrt approximation
     let time_ratio = ((time_remaining as u128 * SCALE_U128) / full_duration as u128) as u64;
 
     if time_ratio == 0 {
-        // Apply floor directly
         let extension_ratio =
             (deposit_ratio as u128 * MIN_EXTENSION_RATIO as u128 / SCALE_U128) as u64;
         return ((full_duration as u128 * extension_ratio as u128) / SCALE_U128) as i64;
     }
 
-    // sqrt(time_ratio) using native sqrt
     let sqrt_ratio = integer_sqrt((time_ratio as u128 * SCALE_U128) as u64);
 
-    // time_factor = sqrt(t) × (0.6 + 0.4×t)
     let linear_part = 600_000 + ((400_000u128 * time_ratio as u128) / SCALE_U128) as u64;
     let time_factor = ((sqrt_ratio as u128 * linear_part as u128) / SCALE_U128) as u64;
 
-    // 3. Extension ratio
     let extension_ratio = ((deposit_ratio as u128 * time_factor as u128) / SCALE_U128) as u64;
 
-    // 4. Apply floor and cap
     let floored = extension_ratio.max(MIN_EXTENSION_RATIO);
     let capped = floored.min(MAX_EXTENSION_RATIO);
 
-    // 5. Final extension
     ((full_duration as u128 * capped as u128) / SCALE_U128) as i64
+}
+
+pub fn get_deposit_fee_bps(lock_tier: &LockTier) -> u64 {
+    match lock_tier {
+        LockTier::Unlocked => 50,
+        LockTier::Short => 30,
+        LockTier::Long => 20,
+        LockTier::VeryLong => 10,
+    }
 }
 
 fn integer_sqrt(n: u64) -> u64 {
@@ -395,10 +424,6 @@ pub struct Vault {
     pub share_mint: Pubkey,
     pub nft_collection_address: Pubkey,
     //
-    pub total_borrowed: u64,
-    pub borrow_index: u64,
-    pub borrow_rate: u64,
-    pub yield_multiplier: u64,
     pub last_update_time: i64,
     pub reserve_factor: u64,
     pub total_reserves: u64,
@@ -638,10 +663,8 @@ pub struct Withdraw<'info> {
     #[account(mut)]
     pub vault: Account<'info, Vault>,
 
-    /// The NFT collection account (PDA from your NFT program)
     pub nft_collection: Account<'info, Collection>,
 
-    /// ✅ Must own at least 1 NFT where the mint authority is the collection
     #[account(
         constraint = user_nft_token.owner == user.key(),
         constraint = user_nft_token.amount > 0,
@@ -801,7 +824,6 @@ pub struct EarlyWithdrawal {
     pub time_remaining: i64,
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -809,14 +831,11 @@ mod tests {
     #[test]
     fn test_ratio_based_duration_simple() {
         let existing_amount = 100_000_000; // 100 tokens
-        let new_amount = 50_000_000;       // 50 tokens
+        let new_amount = 50_000_000; // 50 tokens
         let full_duration = 30 * 24 * 60 * 60; // 30 days
 
-        let result = calculate_ratio_based_duration(
-            existing_amount,
-            new_amount,
-            full_duration,
-        ).unwrap();
+        let result =
+            calculate_ratio_based_duration(existing_amount, new_amount, full_duration).unwrap();
 
         // Expected: (50 / 100) * 30 days = 15 days
         let expected = (full_duration as f64 * 0.5) as i64;
@@ -836,11 +855,8 @@ mod tests {
         let new_amount = 100_000_000;
         let full_duration = 30 * 24 * 60 * 60;
 
-        let result = calculate_ratio_based_duration(
-            existing_amount,
-            new_amount,
-            full_duration,
-        ).unwrap();
+        let result =
+            calculate_ratio_based_duration(existing_amount, new_amount, full_duration).unwrap();
 
         // Should equal full duration (ratio = 1.0)
         assert_eq!(result, full_duration);
@@ -849,14 +865,11 @@ mod tests {
     #[test]
     fn test_ratio_based_duration_tiny_amount() {
         let existing_amount = 1_000_000_000; // 1000 tokens
-        let new_amount = 1_000_000;          // 1 token
+        let new_amount = 1_000_000; // 1 token
         let full_duration = 30 * 24 * 60 * 60;
 
-        let result = calculate_ratio_based_duration(
-            existing_amount,
-            new_amount,
-            full_duration,
-        ).unwrap();
+        let result =
+            calculate_ratio_based_duration(existing_amount, new_amount, full_duration).unwrap();
 
         // Should hit minimum floor (1 day)
         let min_duration = 24 * 60 * 60;
@@ -865,15 +878,12 @@ mod tests {
 
     #[test]
     fn test_ratio_based_duration_huge_amount() {
-        let existing_amount = 10_000_000;    // 10 tokens
-        let new_amount = 1_000_000_000;      // 1000 tokens
+        let existing_amount = 10_000_000; // 10 tokens
+        let new_amount = 1_000_000_000; // 1000 tokens
         let full_duration = 30 * 24 * 60 * 60;
 
-        let result = calculate_ratio_based_duration(
-            existing_amount,
-            new_amount,
-            full_duration,
-        ).unwrap();
+        let result =
+            calculate_ratio_based_duration(existing_amount, new_amount, full_duration).unwrap();
 
         // Should hit maximum cap (full duration)
         assert_eq!(result, full_duration);
@@ -886,11 +896,7 @@ mod tests {
         let new_amount = 50_000_000;
         let full_duration = 30 * 24 * 60 * 60;
 
-        calculate_ratio_based_duration(
-            existing_amount,
-            new_amount,
-            full_duration,
-        ).unwrap();
+        calculate_ratio_based_duration(existing_amount, new_amount, full_duration).unwrap();
     }
 
     #[test]
@@ -900,18 +906,21 @@ mod tests {
         let time_remaining = 15 * 24 * 60 * 60; // 15 days
         let full_duration = 30 * 24 * 60 * 60; // 30 days
 
-        let result = calculate_extension(
-            new_deposit,
-            existing_deposit,
-            time_remaining,
-            full_duration,
-        );
+        let result =
+            calculate_extension(new_deposit, existing_deposit, time_remaining, full_duration);
 
         // Should get some extension based on the formula
         assert!(result > 0, "Extension should be positive");
-        assert!(result <= full_duration, "Extension shouldn't exceed full duration");
-        
-        println!("Extension calculated: {} seconds ({} days)", result, result / 86400);
+        assert!(
+            result <= full_duration,
+            "Extension shouldn't exceed full duration"
+        );
+
+        println!(
+            "Extension calculated: {} seconds ({} days)",
+            result,
+            result / 86400
+        );
     }
 
     #[test]
@@ -919,6 +928,57 @@ mod tests {
         assert_eq!(get_lock_duration(&LockTier::Unlocked), 0);
         assert_eq!(get_lock_duration(&LockTier::Short), 30 * 24 * 60 * 60);
         assert_eq!(get_lock_duration(&LockTier::Long), 6 * 30 * 24 * 60 * 60);
-        assert_eq!(get_lock_duration(&LockTier::VeryLong), 12 * 30 * 24 * 60 * 60);
+        assert_eq!(
+            get_lock_duration(&LockTier::VeryLong),
+            12 * 30 * 24 * 60 * 60
+        );
+    }
+
+    #[test]
+    fn test_fee_discounts() {
+        // Test fee calculations
+        assert_eq!(get_deposit_fee_bps(&LockTier::Unlocked), 50); // 0.5%
+        assert_eq!(get_deposit_fee_bps(&LockTier::Short), 30); // 0.3%
+        assert_eq!(get_deposit_fee_bps(&LockTier::Long), 20); // 0.2%
+        assert_eq!(get_deposit_fee_bps(&LockTier::VeryLong), 10); // 0.1%
+
+        // Test fee calculation
+        let amount = 100_000_000; // 100 tokens
+
+        // Unlocked: 0.5% = 500,000
+        let unlocked_fee = (amount as u128 * 50) / 10000;
+        assert_eq!(unlocked_fee, 500_000);
+
+        // VeryLong: 0.1% = 100,000
+        let verylong_fee = (amount as u128 * 10) / 10000;
+        assert_eq!(verylong_fee, 100_000);
+
+        // Difference: 400,000 tokens saved!
+        println!(
+            "✅ VeryLong saves {} tokens in fees",
+            unlocked_fee - verylong_fee
+        );
+    }
+
+    #[test]
+    fn test_net_deposit_calculation() {
+        let amount = 100_000_000; // 100 tokens (6 decimals)
+
+        // Unlocked
+        let unlocked_fee = (amount as u128 * 50) / 10000;
+        let unlocked_net = amount - unlocked_fee as u64;
+        assert_eq!(unlocked_net, 99_500_000); // 99.5 tokens
+
+        // VeryLong
+        let verylong_fee = (amount as u128 * 10) / 10000;
+        let verylong_net = amount - verylong_fee as u64;
+        assert_eq!(verylong_net, 99_900_000); // 99.9 tokens
+
+        println!("Unlocked net: {}", unlocked_net);
+        println!("VeryLong net: {}", verylong_net);
+        println!(
+            "✅ VeryLong deposits {} more tokens",
+            verylong_net - unlocked_net
+        );
     }
 }

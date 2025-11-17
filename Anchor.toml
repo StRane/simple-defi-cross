@@ -5,15 +5,15 @@ skip-lint = false
 [programs.localnet]
 #unique_id = "u7X6Ut4Mm9wqQ8ci2XiUjtcyqRJnHScStUo81Deh6bA"
 #spl_4626_vault="987M4VVtt2T3bHBV6cXmeMsZgAxbMs2HUBaaAcpqFeyW"
-simple_vault="4g14aJ5JEN3og3RTjrMJFuTJbYFqQ8GrcyuoS36xCnQL"
-unique_low="3tjocQ6BpRfAniWTVeC3fp7UrpGeaBbBzBZkA4x5eVVF"
+simple_vault="DGXrmuhPvYJEWytSpZPB3PCA2zNvSsNvctkAeS924473"
+unique_low="ACM92DSXA9ebVyxQpZf4EKDvuEgXsiAkD6Us8kTcGVh7"
 test_token="BSCgQLPHjjvoH6qbG59dyxUTfcK6jAqFDdPk6MNN7sEz"
 
 [programs.testnet]
 #unique_id_nft = "u7X6Ut4Mm9wqQ8ci2XiUjtcyqRJnHScStUo81Deh6bA"
 #spl_4626_vault="987M4VVtt2T3bHBV6cXmeMsZgAxbMs2HUBaaAcpqFeyW"
-simple_vault="4g14aJ5JEN3og3RTjrMJFuTJbYFqQ8GrcyuoS36xCnQL"
-unique_low="3tjocQ6BpRfAniWTVeC3fp7UrpGeaBbBzBZkA4x5eVVF"
+simple_vault="DGXrmuhPvYJEWytSpZPB3PCA2zNvSsNvctkAeS924473"
+unique_low="ACM92DSXA9ebVyxQpZf4EKDvuEgXsiAkD6Us8kTcGVh7"
 test_token="BSCgQLPHjjvoH6qbG59dyxUTfcK6jAqFDdPk6MNN7sEz"
 
 [registry]

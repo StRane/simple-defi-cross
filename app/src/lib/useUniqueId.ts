@@ -12,7 +12,7 @@ import {
 } from '@solana/spl-token';
 import { AnchorWallet } from '@solana/wallet-adapter-react';
 
-import type { UniqueLow } from '@/../../target/types/unique_low';
+import type { UniqueLow } from '@/types/unique_low';
 import IDL from '@/../../target/idl/unique_low.json';
 
 // Import stores

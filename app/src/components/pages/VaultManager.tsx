@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { BN } from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
 import { useAppKitAccount } from "@reown/appkit/react";
 
 // Import hooks
@@ -15,37 +14,30 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Progress } from "@/components/ui/progress";
+
 import { Toaster } from "@/components/ui/sonner";
+import { LockPanel } from "@/components/shared/LockPanel";
 
 // Icons
 import {
   Wallet,
   Loader2,
   CheckCircle2,
-  XCircle,
-  Copy,
   AlertCircle,
   ArrowUpRight,
   ArrowDownLeft,
-  ExternalLink,
   RefreshCw,
   Shield,
   Info,
   Coins,
-  Sparkles,
   CreditCard,
-  TrendingUp,
-  TrendingDown,
+  Vault,
 } from "lucide-react";
 
 // Toast notifications
@@ -57,52 +49,24 @@ import { AppHeader } from "@/components/shared/AppHeader";
 export const VaultManager: React.FC = () => {
   console.log("[VaultManager] === COMPONENT RENDER START ===");
 
-  const { address, isConnected } = useAppKitAccount();
+  const { isConnected } = useAppKitAccount();
 
   // Selection context
-  const {
-    selectedTokenAccount,
-    selectedTokenMint,
-    setSelectedTokenAccount,
-    setSelectedTokenMint,
-  } = useTokenSelection();
+  const { selectedTokenMint } = useTokenSelection();
 
-  const { selectedNFT, setSelectedNFT } = useNFTSelection();
+  const { selectedNFT } = useNFTSelection();
 
   // Vault hook - now includes transaction state
   const {
     // Store data (read-only)
     program,
-    vault,
     selectedNFTPosition,
-    allUserPositions,
-    loading,
-    userPositionLoading,
     error,
-
-    // Network state (read-only)
-    connection,
     currentNetwork,
-    isSolanaNetwork,
-    isNetworkReady,
-
-    // AppKit state
-    isConnected: hookConnected,
-    walletAddress,
-
-    // Selection state
     hasRequiredSelections,
-
-    // Config
-    vaultConfig,
-
     // Actions
     deposit,
     withdraw,
-    refreshVaultData,
-    refreshUserPosition,
-    refreshAllData,
-
     // Transaction state - NEW
     transactionState,
   } = useVault();
@@ -322,7 +286,7 @@ export const VaultManager: React.FC = () => {
     }
 
     try {
-      const shares:BN = new BN(Math.floor(sharesAmount));
+      const shares: BN = new BN(Math.floor(sharesAmount));
 
       console.log("[VaultManager] Calling withdraw with:", {
         shares: shares.toString(),
@@ -427,10 +391,12 @@ export const VaultManager: React.FC = () => {
       <div className="container mx-auto p-6">
         <AppHeader
           title="Vault Manager"
-          hasAddress={!!address}
-          hasSelectedToken={!!selectedTokenMint}
-          hasSelectedNFT={!!selectedNFT}
-          programConnected={!!program}
+          description="Please Connect To Network"
+          icon={<Vault className="h-5 w-5" />}
+          programStatus={{
+            connected: !!program,
+            label: "Vault Program",
+          }}
           currentNetwork={currentNetwork}
           onCopyToClipboard={copyToClipboard}
         />
@@ -458,12 +424,14 @@ export const VaultManager: React.FC = () => {
     <div className="container mx-auto p-6 space-y-6">
       <AppHeader
         title="Vault Manager"
-        hasAddress={!!address}
-        hasSelectedToken={!!selectedTokenMint}
-        hasSelectedNFT={!!selectedNFT}
-        programConnected={!!program}
-        currentNetwork={currentNetwork}
-        onCopyToClipboard={copyToClipboard}
+        description="Deposit, lock, and manage your vault positions" // ✅ Added
+        icon={<Vault className="h-5 w-5" />} // ✅ Added
+        programStatus={{
+          connected: !!program,
+          label: "Vault Program",
+        }}
+        currentNetwork={currentNetwork} // ✅ Already correct
+        onCopyToClipboard={copyToClipboard} // ✅ Already correct
       />
 
       {/* Error Display */}
@@ -478,6 +446,7 @@ export const VaultManager: React.FC = () => {
       <Tabs defaultValue="operations" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="operations">Operations</TabsTrigger>
+          <TabsTrigger value="lock">Lock</TabsTrigger>
           <TabsTrigger value="positions">Positions</TabsTrigger>
         </TabsList>
 
@@ -561,13 +530,15 @@ export const VaultManager: React.FC = () => {
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                Please select both a token and ID from the Asset Identity Hub
-                to enable vault operations.
+                Please select both a token and ID from the Asset Identity Hub to
+                enable vault operations.
               </AlertDescription>
             </Alert>
           )}
         </TabsContent>
-
+        <TabsContent value="lock" className="space-y-4">
+          <LockPanel />
+        </TabsContent>
         <TabsContent value="positions" className="space-y-4">
           {/* Current Position */}
           <Card>
