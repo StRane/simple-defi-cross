@@ -102,7 +102,7 @@ export const useToken = (): UseTokenReturn => {
             }
 
             try {
-                // console.log('[useToken] Initializing program...');
+                
                 hasInitializedProgram.current = true;
                 setLoading(true);
                 setError(null);
@@ -138,11 +138,11 @@ export const useToken = (): UseTokenReturn => {
         };
 
         if (connection && address && walletProvider && isNetworkReady && isSolanaNetwork && !hasInitializedProgram.current) {
-            // console.log('[useToken] Starting program initialization...');
+            
             initializeProgram();
         }
 
-        // console.log('[useToken] === PROGRAM INIT EFFECT END ===');
+        
     }, [connection, address, walletProvider, isNetworkReady, isSolanaNetwork, setProgram, setMintAuthPda, setLoading, setError]);
 
     // Token data loading effect - ONLY loads data when program is ready
@@ -212,7 +212,7 @@ export const useToken = (): UseTokenReturn => {
         };
 
         if (program && address && connection && mintAuthPda && !hasLoadedTokenData.current && !loading) {
-            // console.log('[useToken] Starting token data loading...');
+            
             loadTokenData();
         }
 

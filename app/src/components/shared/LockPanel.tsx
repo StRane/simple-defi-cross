@@ -283,12 +283,12 @@ export const LockPanel: React.FC = () => {
         )}
 
         {/* Existing Position Alert */}
-        {selectedNFTPosition && selectedNFTPosition.shareAmount > 0 && (
+        {selectedNFTPosition && selectedNFTPosition.shares.toNumber() > 0 && (
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
               You have an existing position with{" "}
-              {(selectedNFTPosition.shareAmount / 1e6).toFixed(2)} shares.
+              {(selectedNFTPosition.shares.toNumber() / 1e6).toFixed(2)} shares.
               Adding more will extend your lock.
             </AlertDescription>
           </Alert>

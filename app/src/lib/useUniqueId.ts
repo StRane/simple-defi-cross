@@ -127,7 +127,7 @@ export const useUniqueId = (): UseUniqueIdReturn => {
       }
 
       try {
-        // console.log('[useUniqueId] Initializing program...');
+       
         hasInitializedProgram.current = true;
         setLoading(true);
         setError(null);
@@ -163,7 +163,7 @@ export const useUniqueId = (): UseUniqueIdReturn => {
     };
 
     if (connection && address && walletProvider && isNetworkReady && isSolanaNetwork && !hasInitializedProgram.current) {
-      // console.log('[useUniqueId] Starting program initialization...');
+     
       initializeProgram();
     }
 
@@ -322,7 +322,7 @@ export const useUniqueId = (): UseUniqueIdReturn => {
         .signers([mintKeypair])
         .rpc();
 
-      console.log('[useUniqueId] Mint transaction successful:', tx);
+      
 
       // Refresh store data after successful mint
       refreshAllData();
@@ -358,7 +358,7 @@ export const useUniqueId = (): UseUniqueIdReturn => {
       if (nft) {
         mintedNFTs.push(nft);
       } else {
-        console.log(`[useUniqueId] Failed to mint NFT ${i + 1}, stopping batch`);
+        
         break;
       }
     }

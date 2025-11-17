@@ -154,23 +154,17 @@ export const VaultManager: React.FC = () => {
         new BN(10).pow(new BN(decimals))
       );
 
-      console.log("[VaultManager] Calling deposit with:", {
-        amount: amount.toString(),
-        assetMint: selectedTokenMint.toBase58(),
-        userNftMint: selectedNFT.toBase58(),
-      });
-
       const tx = await deposit(amount, selectedTokenMint, selectedNFT);
 
       if (tx) {
         setDepositAmount("100"); // Reset form on success
-        console.log("[VaultManager] Deposit completed successfully");
+
       }
     } catch (err) {
       console.error("[VaultManager] Deposit failed:", err);
       // Error handling is done in the hook
     }
-    console.log("[VaultManager] === DEPOSIT HANDLER END ===");
+
   };
 
   // Get deposit button props based on transaction state
@@ -272,9 +266,9 @@ export const VaultManager: React.FC = () => {
       return;
     }
 
-    if (sharesAmount > selectedNFTPosition.shareAmount) {
+    if (sharesAmount > selectedNFTPosition.shares.toNumber()) {
       toast.error("Invalid Amount", {
-        description: `You only have ${selectedNFTPosition.shareAmount} shares available`,
+        description: `You only have ${selectedNFTPosition.shares} shares available`,
       });
       return;
     }
@@ -511,7 +505,7 @@ export const VaultManager: React.FC = () => {
                     />
                     <div className="text-xs text-muted-foreground">
                       {selectedNFTPosition
-                        ? `Available shares: ${selectedNFTPosition.shareAmount.toLocaleString()}`
+                        ? `Available shares: ${selectedNFTPosition.shares.toString()}`
                         : "Select an ID to see your position"}
                     </div>
                   </div>
@@ -569,7 +563,7 @@ export const VaultManager: React.FC = () => {
                         Shares
                       </p>
                       <p className="font-semibold">
-                        {selectedNFTPosition.shareAmount.toLocaleString()}
+                        {selectedNFTPosition.shares.toString()}
                       </p>
                     </div>
                   </div>
@@ -589,7 +583,7 @@ export const VaultManager: React.FC = () => {
                       </p>
                       <p className="text-sm">
                         {new Date(
-                          selectedNFTPosition.timestamp * 1000
+                          selectedNFTPosition.depositTime?.toNumber() * 1000
                         ).toLocaleDateString()}
                       </p>
                     </div>

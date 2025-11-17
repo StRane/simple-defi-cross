@@ -17,7 +17,6 @@ import { useVaultStore, type VaultData, type UserPosition } from '@/store/vaultS
 // Import selection context
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 import { useTokenSelection, useNFTSelection } from '@/context/SelectionContext';
-
 // Import new config structure
 import { CONFIG, VaultUtils } from '@/config/programs';
 
@@ -232,12 +231,12 @@ export const useVault = (): UseVaultReturn => {
     useEffect(() => {
         const loadUserPosition = async (nftMint: PublicKey) => {
             if (isLoadingUserPosition.current) {
-                console.log('[useVault] User position loading already in progress, skipping');
+                
                 return;
             }
 
             if (!vault || !address || !program || !connection) {
-                console.log('[useVault] Missing requirements for user position loading');
+               
                 return;
             }
 
@@ -250,11 +249,6 @@ export const useVault = (): UseVaultReturn => {
                 // Use derived accounts from VaultUtils
                 const derivedAccounts = VaultUtils.getDerivedAccountsForUser(userPublicKey, nftMint);
 
-                console.log('[useVault] Derived accounts for user position:', {
-                    userInfoPda: derivedAccounts.userInfoPda.toBase58(),
-                    userShareTokenAccount: derivedAccounts.userShareTokenAccount.toBase58(),
-                    userNftTokenAccount: derivedAccounts.userNftTokenAccount.toBase58()
-                });
 
                 // Fetch the UserInfo account using derived PDA
                 const userInfo = await program.account.userInfo.fetchNullable(derivedAccounts.userInfoPda);
@@ -281,10 +275,13 @@ export const useVault = (): UseVaultReturn => {
                     const currentPosition: UserPosition = {
                         user: userPublicKey,
                         nftMint: nftMint,
-                        depositAmount,
-                        shareAmount: Number(userInfo.shares),
-                        timestamp: userInfo.depositTime.toNumber() * 1000
+                        depositAmount: new BN(depositAmount),
+                        shares: userInfo.shares,
+                        depositTime: userInfo.depositTime,
+                        lockTier: userInfo.lockTier,
+                        lockedUntil: userInfo.lockedUntil,
                     };
+
 
                     updateUserPositionForNFT(nftMint, currentPosition);
                 } else {
@@ -292,7 +289,7 @@ export const useVault = (): UseVaultReturn => {
                 }
 
             } catch (err) {
-                console.error('[useVault] Error loading position for selected NFT:', err);
+                console.error('[useVault] Error loading position for selected ID:', err);
                 updateUserPositionForNFT(nftMint, null);
             } finally {
                 isLoadingUserPosition.current = false;
@@ -303,7 +300,7 @@ export const useVault = (): UseVaultReturn => {
         if (selectedNFT && vault && program && address && connection && !userPositionLoading) {
             loadUserPosition(selectedNFT);
         } else if (!selectedNFT) {
-            console.log('[useVault] No NFT selected - clearing user positions');
+            
             clearUserPositions();
         }
 
@@ -337,12 +334,7 @@ export const useVault = (): UseVaultReturn => {
         assetMint: PublicKey,
         userNftMint: PublicKey
     ): Promise<string | null> => {
-        console.log('[useVault] === DEPOSIT START ===');
-        console.log('[useVault] Deposit parameters:', {
-            amount: amount.toString(),
-            assetMint: assetMint.toBase58(),
-            userNftMint: userNftMint.toBase58()
-        });
+
 
         if (!program || !address || !connection) {
             const error = 'Missing program, address, or connection for deposit';
@@ -424,7 +416,6 @@ export const useVault = (): UseVaultReturn => {
                     message: 'Deposit successful! Transaction confirmed on network.'
                 });
 
-                console.log('[useVault] Transaction confirmed successfully');
 
                 // Schedule data refresh and final success message
                 setTimeout(() => {
@@ -514,7 +505,6 @@ export const useVault = (): UseVaultReturn => {
                 });
             }, 5000);
 
-            console.log('[useVault] === DEPOSIT END (ERROR) ===');
             return null;
         } finally {
             setLoading(false);
@@ -526,12 +516,7 @@ export const useVault = (): UseVaultReturn => {
         assetMint: PublicKey,
         userNftMint: PublicKey
     ): Promise<string | null> => {
-        console.log('[useVault] === WITHDRAW START ===');
-        console.log('[useVault] Withdraw parameters:', {
-            shares: shares.toString(),
-            assetMint: assetMint.toBase58(),
-            userNftMint: userNftMint.toBase58()
-        });
+
 
         if (!program || !address || !connection) {
             const error = 'Missing program, address, or connection for withdraw';

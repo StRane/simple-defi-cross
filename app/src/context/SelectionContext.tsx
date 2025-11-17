@@ -234,13 +234,7 @@ export const useOperationState = () => {
     startOperation, 
     endOperation 
   } = useSelection();
-  
-  console.log('[SelectionContext] Operation state hook called:', {
-    operationInProgress,
-    operationType
-  });
 
-  // Memoize the returned object and isOperationType function
   return useMemo(() => ({
     operationInProgress,
     operationType,

@@ -51,26 +51,6 @@ export const useNetworkStore = create<NetworkStore>()(
                 // Main sync method - called by hooks when AppKit network changes
                 syncNetworkFromAppKit: (networkName, caipNetworkId) => set((state) => {
 
-                    ///FOR DEBUG
-                    // console.log('[NetworkStore] === SYNC DEBUG START ===');
-                    // console.log('[NetworkStore] Input:', { networkName, caipNetworkId });
-
-                    // Test each condition individually
-                    // const hasChainPrefix = caipNetworkId?.includes('solana:');
-                    // const isTestnet = caipNetworkId?.startsWith('4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z');
-                    // const isDevnet = caipNetworkId?.startsWith('EtWTRABZaYq6iMfeYKouRu166VU2xqa1');
-                    // const isMainnet = caipNetworkId?.startsWith('5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp');
-                    // const isLocalnet = caipNetworkId?.startsWith('8E9rvCKLFQia2Y35HXjjpWzj8weVo44K');
-                    // const nameContainsSolana = networkName?.toLowerCase().includes('solana');
-
-                    // console.log('[NetworkStore] Detection tests:', {
-                    //     hasChainPrefix,
-                    //     isTestnet,
-                    //     isDevnet,
-                    //     isMainnet,
-                    //     isLocalnet,
-                    //     nameContainsSolana
-                    // });
 
                     const isSolanaNetwork = caipNetworkId ? (
                         caipNetworkId.includes('solana:') ||
@@ -80,10 +60,6 @@ export const useNetworkStore = create<NetworkStore>()(
                         caipNetworkId.startsWith('8E9rvCKLFQia2Y35HXjjpWzj8weVo44K') ||
                         (networkName?.toLowerCase().includes('solana') || false)
                     ) : (networkName?.toLowerCase().includes('solana') || false);
-
-                    console.log('[NetworkStore] Final isSolanaNetwork:', isSolanaNetwork);
-                    console.log('[NetworkStore] Current state network:', state.currentNetwork);
-                    console.log('[NetworkStore] === SYNC DEBUG END ===');
 
                     // Update Solana detection
                     state.isSolanaNetwork = isSolanaNetwork;
@@ -95,33 +71,31 @@ export const useNetworkStore = create<NetworkStore>()(
 
                         // Check if we need to create a new connection
                         if (!state.connection) {
-                            console.log('[NetworkStore] No connection exists, creating new connection for:', networkName);
+
 
                             try {
                                 const rpcUrl = CONFIG.RPC_ENDPOINTS[networkName as keyof typeof CONFIG.RPC_ENDPOINTS]
                                     || CONFIG.RPC_ENDPOINTS['solana-testnet'];
 
-                                console.log('[NetworkStore] Creating connection with RPC:', rpcUrl);
+
                                 const newConnection = new Connection(rpcUrl, 'confirmed');
 
                                 // Use the setConnection method instead of direct assignment
                                 state.connection = newConnection;
                                 state.isReady = true;
 
-                                console.log('[NetworkStore] Connection created successfully');
+
                             } catch (err) {
-                                console.error('[NetworkStore] Failed to create connection:', err);
+
                                 state.error = `Failed to connect to ${networkName}: ${(err as Error).message}`;
                                 state.connection = null;
                                 state.isReady = false;
                             }
-                        } else {
-                            console.log('[NetworkStore] Connection already exists, keeping it');
                         }
 
                     } else {
                         // Not on Solana network or no network - clear everything
-                        console.log('[NetworkStore] Not on Solana network, clearing state');
+
                         state.currentNetwork = null;
                         state.connection = null;
                         state.isReady = false;
@@ -130,23 +104,11 @@ export const useNetworkStore = create<NetworkStore>()(
                             state.error = `Unsupported network: ${networkName}`;
                         }
                     }
-                    console.log('[NetworkStore] Final state AFTER sync:', {
-                        currentNetwork: state.currentNetwork,
-                        hasConnection: !!state.connection,
-                        connectionRpc: state.connection?.rpcEndpoint,
-                        isSolanaNetwork: state.isSolanaNetwork,
-                        isReady: state.isReady
-                    });
-                    console.log('[NetworkStore] === SYNC DEBUG END ===');
+
                 }),
 
                 setConnection: (connection) => set((state) => {
-                    console.log('[NetworkStore] setConnection called:', {
-                        newConnection: !!connection,
-                        newRpc: connection?.rpcEndpoint,
-                        previousConnection: !!state.connection,
-                        previousRpc: state.connection?.rpcEndpoint
-                    });
+
                     state.connection = connection;
                     state.isReady = !!connection;
                 }),
@@ -164,23 +126,10 @@ export const useNetworkStore = create<NetworkStore>()(
                 }),
 
                 reset: () => set((state) => {
-                    console.log('[NetworkStore] === RESET CALLED ===');
-                    console.log('[NetworkStore] State BEFORE reset:', {
-                        currentNetwork: state.currentNetwork,
-                        hasConnection: !!state.connection,
-                        connectionRpc: state.connection?.rpcEndpoint,
-                        isSolanaNetwork: state.isSolanaNetwork,
-                        isReady: state.isReady
-                    });
-                    console.trace('[NetworkStore] Reset stack trace');
-                    console.log('[NetworkStore] Resetting state');
+
+
                     Object.assign(state, initialState);
-                    console.log('[NetworkStore] State AFTER reset:', {
-                        currentNetwork: state.currentNetwork,
-                        hasConnection: !!state.connection,
-                        isSolanaNetwork: state.isSolanaNetwork,
-                        isReady: state.isReady
-                    });
+
                 }),
 
                 // Computed getters

@@ -176,7 +176,7 @@ export const AssetIdentityHub: React.FC = () => {
   const navigate = useNavigate();
 
   // UI state
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("manage");
   const [notification, setNotification] = useState<{
     type: "success" | "error" | null;
     message: string;
@@ -473,10 +473,15 @@ export const AssetIdentityHub: React.FC = () => {
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertDescription className="flex items-center justify-between">
                   <span>
-                    ✅ Ready for vault operations! You have tokens and
-                    identity.
+                    Tokens and identity selected. Ready for vault operations!
                   </span>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                  <Button
+                    disabled={!readiness.ready}
+                    className="h-4 w-4"
+                    onClick={() => navigate("/vault")}
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
                 </AlertDescription>
               </Alert>
             </>
@@ -494,14 +499,171 @@ export const AssetIdentityHub: React.FC = () => {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="manage">Manage Assets</TabsTrigger>
-          <TabsTrigger value="advanced">Advanced</TabsTrigger>
+          <TabsTrigger value="mint">Mint Assets</TabsTrigger>
         </TabsList>
 
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-4">
+        {/* Manage Assets Tab */}
+        <TabsContent value="manage" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Token Management */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Token Portfolio</CardTitle>
+                <CardDescription>
+                  Select and manage your token assets
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[300px]">
+                  <div className="space-y-2">
+                    {userTokens.length > 0 ? (
+                      userTokens.map((token, index) => (
+                        <Card
+                          key={index}
+                          className={`p-3 cursor-pointer transition-colors ${
+                            selectedTokenAccount?.equals(token.account)
+                              ? "ring-2 ring-primary bg-primary/5"
+                              : "hover:bg-muted"
+                          }`}
+                          onClick={() =>
+                            handleTokenSelect(token.account, token.mint)
+                          }
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant="outline"
+                                  className="font-mono text-xs"
+                                >
+                                  {token.mint.toBase58().slice(0, 8)}...
+                                </Badge>
+                                {selectedTokenAccount?.equals(
+                                  token.account
+                                ) && <Check className="h-4 w-4 text-primary" />}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                Balance:{" "}
+                                {formatBalance(token.balance, token.decimals)}
+                              </p>
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(
+                                  token.account.toBase58(),
+                                  "Token account"
+                                );
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </Card>
+                      ))
+                    ) : (
+                      <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                          {readiness.tokens.loading
+                            ? "Loading token accounts..."
+                            : "No token accounts found. Mint some tokens first."}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            {/* NFT Management */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Identity</CardTitle>
+                <CardDescription>
+                  Select your identity
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[300px]">
+                  <div className="space-y-2">
+                    {readiness.nfts.available && collection?.mintToUniqueId ? (
+                      collection.mintToUniqueId.map((item, index) => {
+                        const tokenData = collection.tokenIdToUniqueId[index];
+                        return (
+                          <Card
+                            key={item.mint.toBase58()}
+                            className={`p-3 cursor-pointer transition-colors ${
+                              selectedNFT?.equals(item.mint)
+                                ? "ring-2 ring-primary bg-primary/5"
+                                : "hover:bg-muted"
+                            }`}
+                            onClick={() => handleNFTSelect(item.mint)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <Badge
+                                    variant="outline"
+                                    className="font-mono text-xs"
+                                  >
+                                    ID #
+                                    {tokenData?.tokenId?.toString() ||
+                                      index + 1}
+                                  </Badge>
+                                  {selectedNFT?.equals(item.mint) && (
+                                    <Check className="h-4 w-4 text-primary" />
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  Unique ID: [
+                                  {item.uniqueId.slice(0, 3).join(", ")}...]
+                                </p>
+                              </div>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyToClipboard(
+                                    item.mint.toBase58(),
+                                    "NFT mint"
+                                  );
+                                }}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </Card>
+                        );
+                      })
+                    ) : (
+                      <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                          {readiness.nfts.loading
+                            ? "Loading IDs..."
+                            : !readiness.nfts.collectionReady
+                            ? "Collection not initialized. Run quick setup first."
+                            : "No IDs found. Mint an NFT first."}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Mint Assets Tab */}
+        <TabsContent value="mint" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Current Selections */}
             <Card>
@@ -637,7 +799,7 @@ export const AssetIdentityHub: React.FC = () => {
                   ) : (
                     <Sparkles className="h-4 w-4" />
                   )}
-                  Mint NFT Identity
+                  Mint Identity
                 </Button>
 
                 {/* Refresh All */}
@@ -659,353 +821,6 @@ export const AssetIdentityHub: React.FC = () => {
           </div>
         </TabsContent>
 
-        {/* Manage Assets Tab */}
-        <TabsContent value="manage" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Token Management */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Token Portfolio</CardTitle>
-                <CardDescription>
-                  Select and manage your token assets
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[300px]">
-                  <div className="space-y-2">
-                    {userTokens.length > 0 ? (
-                      userTokens.map((token, index) => (
-                        <Card
-                          key={index}
-                          className={`p-3 cursor-pointer transition-colors ${
-                            selectedTokenAccount?.equals(token.account)
-                              ? "ring-2 ring-primary bg-primary/5"
-                              : "hover:bg-muted"
-                          }`}
-                          onClick={() =>
-                            handleTokenSelect(token.account, token.mint)
-                          }
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <Badge
-                                  variant="outline"
-                                  className="font-mono text-xs"
-                                >
-                                  {token.mint.toBase58().slice(0, 8)}...
-                                </Badge>
-                                {selectedTokenAccount?.equals(
-                                  token.account
-                                ) && <Check className="h-4 w-4 text-primary" />}
-                              </div>
-                              <p className="text-sm text-muted-foreground">
-                                Balance:{" "}
-                                {formatBalance(token.balance, token.decimals)}
-                              </p>
-                            </div>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                copyToClipboard(
-                                  token.account.toBase58(),
-                                  "Token account"
-                                );
-                              }}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </Card>
-                      ))
-                    ) : (
-                      <Alert>
-                        <Info className="h-4 w-4" />
-                        <AlertDescription>
-                          {readiness.tokens.loading
-                            ? "Loading token accounts..."
-                            : "No token accounts found. Mint some tokens first."}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            {/* NFT Management */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Identity</CardTitle>
-                <CardDescription>
-                  Select your identity NFT for verification
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[300px]">
-                  <div className="space-y-2">
-                    {readiness.nfts.available && collection?.mintToUniqueId ? (
-                      collection.mintToUniqueId.map((item, index) => {
-                        const tokenData = collection.tokenIdToUniqueId[index];
-                        return (
-                          <Card
-                            key={item.mint.toBase58()}
-                            className={`p-3 cursor-pointer transition-colors ${
-                              selectedNFT?.equals(item.mint)
-                                ? "ring-2 ring-primary bg-primary/5"
-                                : "hover:bg-muted"
-                            }`}
-                            onClick={() => handleNFTSelect(item.mint)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <Badge
-                                    variant="outline"
-                                    className="font-mono text-xs"
-                                  >
-                                    ID #
-                                    {tokenData?.tokenId?.toString() ||
-                                      index + 1}
-                                  </Badge>
-                                  {selectedNFT?.equals(item.mint) && (
-                                    <Check className="h-4 w-4 text-primary" />
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                  Unique ID: [
-                                  {item.uniqueId.slice(0, 3).join(", ")}...]
-                                </p>
-                              </div>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  copyToClipboard(
-                                    item.mint.toBase58(),
-                                    "NFT mint"
-                                  );
-                                }}
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </Card>
-                        );
-                      })
-                    ) : (
-                      <Alert>
-                        <Info className="h-4 w-4" />
-                        <AlertDescription>
-                          {readiness.nfts.loading
-                            ? "Loading IDs..."
-                            : !readiness.nfts.collectionReady
-                            ? "Collection not initialized. Run quick setup first."
-                            : "No IDs found. Mint an NFT first."}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Advanced Tab */}
-        <TabsContent value="advanced" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Advanced Settings
-              </CardTitle>
-              <CardDescription>
-                Collection management and power user features
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Collection Form */}
-              {!readiness.nfts.collectionReady && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Initialize ID Collection</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Collection Name</Label>
-                      <Input
-                        id="name"
-                        value={collectionForm.name}
-                        onChange={(e) =>
-                          setCollectionForm((prev) => ({
-                            ...prev,
-                            name: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="symbol">Symbol</Label>
-                      <Input
-                        id="symbol"
-                        value={collectionForm.symbol}
-                        onChange={(e) =>
-                          setCollectionForm((prev) => ({
-                            ...prev,
-                            symbol: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="col-span-full space-y-2">
-                      <Label htmlFor="baseUri">Base URI</Label>
-                      <Input
-                        id="baseUri"
-                        value={collectionForm.baseUri}
-                        onChange={(e) =>
-                          setCollectionForm((prev) => ({
-                            ...prev,
-                            baseUri: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Collection Info */}
-              {readiness.nfts.collectionReady && collection && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Collection Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm text-muted-foreground">
-                        Name
-                      </Label>
-                      <p className="font-semibold">{collection.name}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-muted-foreground">
-                        Symbol
-                      </Label>
-                      <p className="font-semibold">{collection.symbol}</p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-muted-foreground">
-                        Total Supply
-                      </Label>
-                      <p className="font-semibold">
-                        {collection.totalSupply?.toString() || "0"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-muted-foreground">
-                        Authority
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <code className="text-xs">
-                          {collection.authority.toBase58().slice(0, 8)}...
-                        </code>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-4 w-4"
-                          onClick={() =>
-                            copyToClipboard(
-                              collection.authority.toBase58(),
-                              "Authority"
-                            )
-                          }
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="col-span-full">
-                      <Label className="text-sm text-muted-foreground">
-                        Base URI
-                      </Label>
-                      <p className="font-mono text-xs break-all">
-                        {collection.baseUri}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Debug Information */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Debug Information</h3>
-                <div className="p-4 bg-muted rounded-lg space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Network:</span>
-                    <span className="font-mono">{currentNetwork}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Token Program Ready:</span>
-                    <span>{readiness.tokens.available ? "✅" : "❌"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>ID Collection Ready:</span>
-                    <span>{readiness.nfts.collectionReady ? "✅" : "❌"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Assets Selected:</span>
-                    <span>
-                      {readiness.tokens.selected && readiness.nfts.selected
-                        ? "✅"
-                        : "❌"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Vault Ready:</span>
-                    <span>{readiness.ready ? "✅" : "❌"}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Raw Data */}
-              <details className="space-y-2">
-                <summary className="cursor-pointer font-semibold">
-                  Raw Store Data
-                </summary>
-                <div className="p-4 bg-muted rounded-lg">
-                  <pre className="text-xs overflow-auto">
-                    {JSON.stringify(
-                      {
-                        readiness,
-                        userTokens: userTokens.map((t) => ({
-                          mint: t.mint.toBase58(),
-                          balance: t.balance,
-                          decimals: t.decimals,
-                        })),
-                        collection: collection
-                          ? {
-                              name: collection.name,
-                              symbol: collection.symbol,
-                              totalSupply: collection.totalSupply?.toString(),
-                              mintCount: collection.mintToUniqueId?.length,
-                            }
-                          : null,
-                        selections: {
-                          token: selectedTokenMint?.toBase58(),
-                          nft: selectedNFT?.toBase58(),
-                        },
-                      },
-                      null,
-                      2
-                    )}
-                  </pre>
-                </div>
-              </details>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {/* Footer Actions */}

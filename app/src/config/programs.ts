@@ -138,12 +138,7 @@ export class VaultUtils {
 
         const [userInfoPda, userInfoBump] = this.getUserInfoPDA(nftMint, userShareTokenAccount);
 
-        console.log("📍 DERIVED ACCOUNTS:");
-        console.log("  vaultPda:", vaultPda.toBase58());
-        console.log("  collectionPda:", collectionPda.toBase58());
-        console.log("  userSharesPda:", userSharesPda.toBase58());
-        console.log("  userInfoPda:", userInfoPda.toBase58());
-        console.log("=============================\n");
+
 
         return {
             // PDAs with bumps

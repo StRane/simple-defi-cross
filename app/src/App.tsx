@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { createAppKit } from "@reown/appkit/react";
 import { WagmiProvider } from "wagmi";
 import { ThemeProvider, useTheme } from "@/components/shared/ThemeProvider";
@@ -123,6 +123,7 @@ export function App() {
               <div className="min-h-screen">
                 <ActionButtonList />
                 <Routes>
+                  <Route path="/" element={<Navigate to="/identitymanager" replace />} />
                   <Route path="/identitymanager" element={<AssetIdentityHub />} />
                   <Route path="/vault" element={<VaultManager />} />
                 </Routes>

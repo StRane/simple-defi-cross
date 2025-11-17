@@ -89,16 +89,13 @@ export const useTokenStore = create<TokenStore>()(
             setProgram: (program) => set((state) => {
                 state.program = program;
                 state.isInitialized = !!program;
-                console.log('[TokenStore] Program set:', !!program);
+
             }),
 
             setMintAuthPda: (mintAuthPda) => set((state) => {
-                console.log('[TokenStore] setMintAuthPda called with:', {
-                    mintAuthPda: mintAuthPda?.toBase58(),
-                    currentValue: state.mintAuthPda?.toBase58()
-                });
+
                 state.mintAuthPda = mintAuthPda;
-                console.log('[TokenStore] MintAuth PDA set to:', state.mintAuthPda?.toBase58());
+
             }),
 
             setIsInitialized: (initialized) => set((state) => {
@@ -108,12 +105,12 @@ export const useTokenStore = create<TokenStore>()(
             // Token data actions
             setTokenInfo: (tokenInfo) => set((state) => {
                 state.tokenInfo = tokenInfo;
-                console.log('[TokenStore] Token info updated:', tokenInfo?.mint.toBase58());
+
             }),
 
             setUserTokens: (tokens) => set((state) => {
                 state.userTokens = tokens;
-                console.log('[TokenStore] User tokens updated:', tokens.length, 'tokens');
+
             }),
 
             addUserToken: (token) => set((state) => {
@@ -128,20 +125,20 @@ export const useTokenStore = create<TokenStore>()(
                     // Add new token
                     state.userTokens.push(token);
                 }
-                console.log('[TokenStore] Token added/updated:', token.mint.toBase58());
+
             }),
 
             updateUserTokenBalance: (mint, balance) => set((state) => {
                 const token = state.userTokens.find(t => t.mint.equals(mint));
                 if (token) {
                     token.balance = balance;
-                    console.log('[TokenStore] Balance updated:', mint.toBase58(), balance);
+
                 }
             }),
 
             setSelectedToken: (token) => set((state) => {
                 state.selectedToken = token;
-                console.log('[TokenStore] Selected token:', token?.toBase58());
+
             }),
 
             // UI actions
@@ -161,25 +158,6 @@ export const useTokenStore = create<TokenStore>()(
                 const networkState = useNetworkStore.getState();
                 const networkHash = `${networkState.currentNetwork}-${networkState.isReady}-${!!networkState.connection}`;
 
-                console.log('[TokenStore] === TOKEN SYNC DEBUG START ===');
-                console.log('[TokenStore] Network state:', {
-                    currentNetwork: networkState.currentNetwork,
-                    isReady: networkState.isReady,
-                    hasConnection: !!networkState.connection,
-                    isSolanaNetwork: networkState.isSolanaNetwork
-                });
-                console.log('[TokenStore] Hash comparison:', {
-                    currentHash: state.lastNetworkHash,
-                    newHash: networkHash,
-                    hashChanged: state.lastNetworkHash !== networkHash
-                });
-                console.log('[TokenStore] === TOKEN SYNC DEBUG END ===');
-
-                console.log('[TokenStore] Syncing with network:', {
-                    currentHash: state.lastNetworkHash,
-                    newHash: networkHash,
-                    isReady: networkState.isReady
-                });
 
                 // Check if network state changed
                 if (state.lastNetworkHash !== networkHash) {
@@ -187,7 +165,7 @@ export const useTokenStore = create<TokenStore>()(
 
                     if (!networkState.isReady || !networkState.isSolanaNetwork) {
                         // Network not ready or not Solana - clear program state
-                        console.log('[TokenStore] Network not ready, clearing program state');
+
                         state.program = null;
                         state.mintAuthPda = null;
                         state.isInitialized = false;
@@ -197,7 +175,7 @@ export const useTokenStore = create<TokenStore>()(
                         state.error = null;
                     } else {
                         // Network is ready - clear error and prepare for program initialization
-                        console.log('[TokenStore] Network ready for program initialization');
+
                         state.error = null;
                         // Note: Program initialization happens in the hook, not here
                     }
@@ -205,7 +183,7 @@ export const useTokenStore = create<TokenStore>()(
             }),
 
             reset: () => set((state) => {
-                console.log('[TokenStore] Resetting state');
+
                 Object.assign(state, initialState);
             }),
 
@@ -229,13 +207,7 @@ export const useTokenStore = create<TokenStore>()(
     )
 );
 
-// Auto-sync with network store changes
-// useNetworkStore.subscribe(
-//     () => {
-//         console.log('[TokenStore] Network state changed, triggering sync');
-//         useTokenStore.getState().syncWithNetwork();
-//     }
-// );
+
 
 // Selectors
 export const selectTokenState = (state: TokenStore) => ({
