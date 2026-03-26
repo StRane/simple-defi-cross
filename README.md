@@ -4,9 +4,9 @@
 
 ## Architectural Concept
 
-Personal exploration of DeFi mechanics and multi-program architecture on Solana. 
-Built a proof-of-concept demonstrating NFT-gated transferable vault 
-positions - exploring how financial positions could become tradeable assets 
+Personal exploration of DeFi mechanics and multi-program architecture on Solana.
+Built a proof-of-concept demonstrating NFT-gated transferable vault
+positions - exploring how financial positions could become tradeable assets
 through NFT ownership transfer.
 
 ### Current Implementation Status
@@ -17,14 +17,14 @@ through NFT ownership transfer.
 ✅ **Full-stack integration** with React frontend and Zustand state management (working)  
 🚧 **Position transferability** - architecture ready, needs marketplace integration  
 🔬 **Cross-chain position transfers** - research/framework stage via NFT bridges  
-🔬 **Risk compartmentalization** - foundation exists across multiple NFT positions  
+🔬 **Risk compartmentalization** - foundation exists across multiple NFT positions
 
 ### Future Potential
 
-* **Position trading through NFT marketplaces** - transfer NFT, transfer vault position
-* **Cross-chain position transfers** via NFT bridges using Wormhole framework
-* **Derivatives-like trading** - positions become tradeable financial instruments
-* **Risk compartmentalization** across multiple NFT positions per user
+- **Position trading through NFT marketplaces** - transfer NFT, transfer vault position
+- **Cross-chain position transfers** via NFT bridges using Wormhole framework
+- **Derivatives-like trading** - positions become tradeable financial instruments
+- **Risk compartmentalization** across multiple NFT positions per user
 
 ## Architecture
 
@@ -36,9 +36,9 @@ unique_low (NFT Program) → simple_vault (Access Control) → test_token (Asset
 
 ### Program Ecosystem
 
-* **`unique_low`**: NFT collection with deterministic unique ID generation and cross-chain messaging framework
-* **`simple_vault`**: Vault operations gated by NFT ownership from specific collection, with per-NFT position isolation
-* **`test_token`**: Asset minting utility for testing vault operations
+- **`unique_low`**: NFT collection with deterministic unique ID generation and cross-chain messaging framework
+- **`simple_vault`**: Vault operations gated by NFT ownership from specific collection, with per-NFT position isolation
+- **`test_token`**: Asset minting utility for testing vault operations
 
 ### Technical Implementation
 
@@ -58,7 +58,7 @@ seeds = [USER_INFO_SEED, user_nft_token.key().as_ref(), user_share_token.key().a
 
 ## Proof of Concept
 
-Identified limitation in DeFi position liquidity and developed proof-of-concept 
+Identified limitation in DeFi position liquidity and developed proof-of-concept
 solution enabling position trading through NFT ownership mechanics. This architecture enables:
 
 - **Multiple Positions Per User**: Each NFT can have its own independent vault position
@@ -183,15 +183,19 @@ unique-id/
 This project demonstrates several Solana development patterns:
 
 ### 1. Multi-Program Architecture
+
 Programs maintain independence while enabling composition through well-defined interfaces.
 
 ### 2. Cross-Program Communication
+
 Identity verification spans programs without tight coupling through deterministic PDA derivation.
 
-### 3. Sophisticated Frontend State Management
+### 3. Frontend State Management
+
 Zustand stores with automatic network synchronization, loading guards, and transaction state management.
 
 ### 4. Position-Based Financial Architecture
+
 Financial positions tied to transferable assets rather than wallet addresses, enabling new DeFi primitives.
 
 ## Security Considerations
@@ -214,11 +218,13 @@ While full derivatives trading requires additional infrastructure (pricing oracl
 ## Future Directions
 
 ### Immediate Roadmap
+
 - Enhanced marketplace integration for position trading
 - Cross-chain identity synchronization via Wormhole
 - Additional access control patterns and position types
 
 ### Research Areas
+
 - Multi-chain position standards and portability
 - Automated market-making with NFT-based parameters
 - Advanced financial primitives with identity integration
@@ -243,5 +249,3 @@ This project serves as both a working implementation and a learning resource for
 ## License
 
 MIT License - see LICENSE file for details.
-
-
